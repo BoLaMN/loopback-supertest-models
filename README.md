@@ -4,7 +4,7 @@
 
 ```
   var app = require('./server/server.js');
-  var models = require('loopback-datatype-objectid')(app);
+  var models = require('loopback-supertest-models')(app);
 ```
 
 ## Example
