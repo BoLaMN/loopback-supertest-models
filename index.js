@@ -1,24 +1,31 @@
-var async, supertest,
-  slice = [].slice;
+var List, async, supertest,
+  slice = [].slice,
+  hasProp = {}.hasOwnProperty,
+  indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
 async = require('async');
 
 supertest = require('supertest');
 
+List = require('./list');
+
 module.exports = function(app) {
-  var _processArg, adapter, addModel, buildArgs, createProxyMethod, createRequest, isAcceptable, models, remoteMethodProxy, restApiRoot, serializeQueryStringValue;
+  var _processArg, adapter, addModel, buildArgs, createProxyMethod, createRequest, isAcceptable, models, parser, remoteMethodProxy, restApiRoot, serializeQueryStringValue;
   models = {};
   restApiRoot = app.get('restApiRoot');
   adapter = app.handler('rest').adapter;
   buildArgs = function(method, ctorArgs, args) {
-    var accepts, isSharedCtor, isStatic, namedArgs, restClass;
-    isStatic = method.isStatic, isSharedCtor = method.isSharedCtor, restClass = method.restClass, accepts = method.accepts;
+    var accepts, http, isSharedCtor, isStatic, namedArgs, ref, restClass;
+    ref = method.sharedMethod || method, isStatic = ref.isStatic, isSharedCtor = ref.isSharedCtor, restClass = ref.restClass, accepts = ref.accepts, http = ref.http;
     args = isSharedCtor ? ctorArgs : args;
     namedArgs = {};
     if (!isStatic) {
       accepts = restClass.ctor.accepts;
     }
-    accepts.forEach((function(_this) {
+    accepts.filter(function(accept) {
+      var ref1;
+      return (ref1 = accept.http.source) === 'path' || ref1 === 'query' || ref1 === 'body';
+    }).forEach((function(_this) {
       return function(accept) {
         var val;
         val = args.shift();
@@ -35,21 +42,19 @@ module.exports = function(app) {
     if (Array.isArray(type) || type.toLowerCase() === 'array' || type !== 'any') {
       return true;
     }
-    if (JSON_TYPES.indexOf(type) === -1) {
+    if (['boolean', 'string', 'object', 'number'].indexOf(type) === -1) {
       return val === 'object';
     }
     return val === type;
   };
-  remoteMethodProxy = function(remoteMethod) {
+  remoteMethodProxy = function(model, remoteMethod) {
     return function() {
-      var args, callback, namedArgs, req;
+      var args, callback, req;
       args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
       if (typeof args[args.length - 1] === 'function') {
         callback = args.pop();
       }
-      namedArgs = buildArgs(remoteMethod, [this.id], args);
-      req = createRequest(remoteMethod, namedArgs);
-      console.log(req);
+      req = createRequest(model, remoteMethod, [this.id], args);
       if (callback) {
         return req.end(callback);
       }
@@ -62,7 +67,7 @@ module.exports = function(app) {
       return;
     }
     scope = remoteMethod.isStatic ? Model : Model.prototype;
-    proxyMethod = remoteMethodProxy(remoteMethod);
+    proxyMethod = remoteMethodProxy(Model, remoteMethod);
     scope[remoteMethod.name] = proxyMethod;
     remoteMethod.aliases.forEach(function(alias) {
       scope[alias] = proxyMethod;
@@ -130,9 +135,37 @@ module.exports = function(app) {
     }
     return req;
   };
-  createRequest = function(remoteMethod, namedArgs) {
-    var accepts, body, ctorAccepts, fullPath, headers, i, isStatic, method, query, ref, ref1, req, request, url, verb;
+  parser = function(model) {
+    return function(res, fn) {
+      res.text = '';
+      res.setEncoding('utf8');
+      res.on('data', function(chunk) {
+        res.text += chunk;
+      });
+      res.on('end', function() {
+        var body, e, err;
+        try {
+          body = res.text && JSON.parse(res.text);
+          if (Array.isArray(body)) {
+            body = new List(body, model);
+          } else {
+            body = new model(body);
+          }
+        } catch (error) {
+          e = error;
+          err = e;
+          err.rawResponse = res.text || null;
+          err.statusCode = res.statusCode;
+        } finally {
+          fn(err, body);
+        }
+      });
+    };
+  };
+  createRequest = function(model, remoteMethod, ctorArgs, args) {
+    var accepts, body, ctorAccepts, fullPath, headers, i, isStatic, method, namedArgs, query, ref, ref1, req, request, url, verb;
     method = adapter.getRestMethodByName(remoteMethod.stringName);
+    namedArgs = buildArgs(method, ctorArgs, args);
     ref = method.getEndpoints()[0], verb = ref.verb, fullPath = ref.fullPath;
     isStatic = method.isStatic || ((ref1 = method.sharedMethod) != null ? ref1.isStatic : void 0);
     req = {
@@ -170,13 +203,33 @@ module.exports = function(app) {
         });
       }
     }
+    request.parse(parser(model));
     return request;
   };
   addModel = function(Model) {
-    var Instance;
-    console.log('adding Model ' + Model.modelName);
+    var Instance, relations;
+    relations = Object.keys(Model.relations);
     Instance = (function() {
-      function Instance() {}
+      Instance.modelName = Model.modelName;
+
+      function Instance(data) {
+        var key, model, relation, value;
+        for (key in data) {
+          if (!hasProp.call(data, key)) continue;
+          value = data[key];
+          if (indexOf.call(relations, key) >= 0) {
+            relation = Model.relations[key];
+            model = relation.modelTo.modelName;
+            if (Array.isArray(value)) {
+              this[key] = new List(value, models[model]);
+            } else {
+              this[key] = new models[model](value);
+            }
+          } else {
+            this[key] = value;
+          }
+        }
+      }
 
       return Instance;
 

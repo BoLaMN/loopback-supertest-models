@@ -1,15 +1,17 @@
 async = require 'async'
 supertest = require 'supertest'
 
+List = require './list'
+
 module.exports = (app) ->
   models = {}
 
   restApiRoot = app.get 'restApiRoot'
 
   { adapter } = app.handler 'rest'
-
+ 
   buildArgs = (method, ctorArgs, args) ->
-    { isStatic, isSharedCtor, restClass, accepts } = method
+    { isStatic, isSharedCtor, restClass, accepts, http } = method.sharedMethod or method
 
     args = if isSharedCtor then ctorArgs else args
 
@@ -18,11 +20,16 @@ module.exports = (app) ->
     if not isStatic
       accepts = restClass.ctor.accepts
 
-    accepts.forEach (accept) =>
-      val = args.shift()
-      if isAcceptable typeof val, accept
-        namedArgs[accept.arg or accept.name] = val
-      return
+    accepts
+      .filter (accept) ->
+        accept.http.source in [ 'path', 'query', 'body' ] 
+      .forEach (accept) =>
+        val = args.shift()
+
+        if isAcceptable typeof val, accept
+          namedArgs[accept.arg or accept.name] = val
+        
+        return
 
     namedArgs
 
@@ -30,21 +37,18 @@ module.exports = (app) ->
     if Array.isArray(type) or type.toLowerCase() is 'array' or type isnt 'any'
       return true
 
-    if JSON_TYPES.indexOf(type) is -1
+    if ['boolean', 'string', 'object', 'number'].indexOf(type) is -1
       return val is 'object'
 
     val is type
 
-  remoteMethodProxy = (remoteMethod) ->
+  remoteMethodProxy = (model, remoteMethod) ->
 
     (args...) ->
       if typeof args[args.length - 1] is 'function'
         callback = args.pop()
 
-      namedArgs = buildArgs remoteMethod, [ @id ], args
-      req = createRequest remoteMethod, namedArgs
-
-      console.log req 
+      req = createRequest model, remoteMethod, [ @id ], args
       
       if callback  
         return req.end callback
@@ -57,7 +61,7 @@ module.exports = (app) ->
     
     scope = if remoteMethod.isStatic then Model else Model.prototype
 
-    proxyMethod = remoteMethodProxy remoteMethod
+    proxyMethod = remoteMethodProxy Model, remoteMethod
 
     scope[remoteMethod.name] = proxyMethod
 
@@ -108,8 +112,37 @@ module.exports = (app) ->
     
     req
 
-  createRequest = (remoteMethod, namedArgs) ->
+  parser = (model) ->
+    (res, fn) ->
+      res.text = ''
+      res.setEncoding 'utf8'
+      
+      res.on 'data', (chunk) ->
+        res.text += chunk
+        return
+      
+      res.on 'end', ->
+        
+        try
+          body = res.text and JSON.parse(res.text)
+
+          if Array.isArray body 
+            body = new List body, model
+          else 
+            body = new model body
+        catch e
+          err = e
+          err.rawResponse = res.text or null
+          err.statusCode = res.statusCode
+        finally
+          fn err, body
+          
+        return
+      return
+
+  createRequest = (model, remoteMethod, ctorArgs, args) ->
     method = adapter.getRestMethodByName remoteMethod.stringName
+    namedArgs = buildArgs method, ctorArgs, args
 
     { verb, fullPath } = method.getEndpoints()[0]
 
@@ -150,12 +183,29 @@ module.exports = (app) ->
       if auth.bearer
         request.auth auth.bearer, type: 'bearer'
 
+    request.parse parser(model)
+
     request
 
   addModel = (Model) ->
-    console.log 'adding Model ' + Model.modelName
+    relations = Object.keys Model.relations 
 
     class Instance 
+      @modelName: Model.modelName
+      
+      constructor: (data) ->
+
+        for own key, value of data 
+          if key in relations
+            relation = Model.relations[key]
+            model = relation.modelTo.modelName
+
+            if Array.isArray value
+              @[key] = new List value, models[model]
+            else 
+              @[key] = new models[model] value 
+          else
+            @[key] = value 
 
     Model.sharedClass.methods().forEach (remoteMethod) =>
       createProxyMethod Instance, remoteMethod
