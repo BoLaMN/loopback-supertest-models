@@ -1,12 +1,19 @@
 {
   "name": "loopback-supertest-models",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Nathan Bolam",
+  "author": {
+    "name": "Nathan Bolam",
+    "url": "https://github.com/BoLaMN"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BoLaMN/loopback-supertest-models"
+  },
   "license": "MIT",
   "dependencies": {
     "async": "^2.4.1",
