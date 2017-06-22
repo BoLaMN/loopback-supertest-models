@@ -1,6 +1,6 @@
 List = require './list'
 
-mongodb = require 'mongodb'
+objectid = require './objectid'
 request = require './request'
 
 module.exports = (app, models, configs) ->
@@ -56,24 +56,6 @@ module.exports = (app, models, configs) ->
 
     ctor
 
-  ObjectID = (id) ->
-    if not id
-      return new mongodb.ObjectID()
-
-    if id instanceof mongodb.ObjectID
-      return id
-
-    if typeof id != 'string'
-      return id
-
-    try
-      if /^[0-9a-fA-F]{24}$/.test(id)
-        return new mongodb.ObjectID(id)
-      else
-        return id
-    catch e
-      return id
-
   class Model
     constructor: (data) ->
 
@@ -100,7 +82,7 @@ module.exports = (app, models, configs) ->
           type = property.type
 
         if type.toLowerCase() is 'objectid'
-          @[propertyName] = ObjectID()
+          @[propertyName] = objectid()
 
         if @[propertyName] is undefined and property.default
           @[propertyName] = property.default

@@ -1,15 +1,15 @@
-var List, mongodb, request,
+var List, objectid, request,
   hasProp = {}.hasOwnProperty,
   slice = [].slice;
 
 List = require('./list');
 
-mongodb = require('mongodb');
+objectid = require('./objectid');
 
 request = require('./request');
 
 module.exports = function(app, models, configs) {
-  var Model, ObjectID, buildRelationModel, createCtor, createRequest, define;
+  var Model, buildRelationModel, createCtor, createRequest, define;
   createRequest = request(app, models);
   define = function(cls, prop, desc) {
     return Object.defineProperty(cls, prop, {
@@ -64,28 +64,6 @@ module.exports = function(app, models, configs) {
     }
     return ctor;
   };
-  ObjectID = function(id) {
-    var e;
-    if (!id) {
-      return new mongodb.ObjectID();
-    }
-    if (id instanceof mongodb.ObjectID) {
-      return id;
-    }
-    if (typeof id !== 'string') {
-      return id;
-    }
-    try {
-      if (/^[0-9a-fA-F]{24}$/.test(id)) {
-        return new mongodb.ObjectID(id);
-      } else {
-        return id;
-      }
-    } catch (error) {
-      e = error;
-      return id;
-    }
-  };
   Model = (function() {
     function Model(data) {
       var as, key, multiple, property, propertyName, ref, ref1, scope, type, value;
@@ -119,7 +97,7 @@ module.exports = function(app, models, configs) {
           type = property.type;
         }
         if (type.toLowerCase() === 'objectid') {
-          this[propertyName] = ObjectID();
+          this[propertyName] = objectid();
         }
         if (this[propertyName] === void 0 && property["default"]) {
           this[propertyName] = property["default"];
