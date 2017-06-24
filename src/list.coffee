@@ -2,7 +2,7 @@
 
 proto = Array.prototype
 
-class List
+class List extends Array
   constructor: (data, type, parent) ->
     collection = []
 
@@ -12,7 +12,18 @@ class List
     if Array.isArray type
       type = type[0]
 
-    @injectClassMethods collection, type, parent
+    define = (prop, desc) ->
+      return unless desc?
+
+      Object.defineProperty collection, prop,
+        writable: false
+        enumerable: false
+        value: desc
+
+    collection.__proto__ = @ 
+
+    define 'parent', parent
+    define 'type', type
 
     if typeof data is 'string' and /^\[.+\]$|^\{.+\}$/.test data
       try
@@ -27,67 +38,41 @@ class List
 
     return collection
 
-  injectClassMethods: (collection, type, parent) ->
-
-    define = (prop, desc) ->
-      return unless desc?
-
-      Object.defineProperty collection, prop,
-        writable: false
-        enumerable: false
-        value: desc
-
-    for key, value of @
-      define key, value
-
-    define 'parent', parent
-    define 'itemType', type
-
-    collection
+  new: (arr) ->
+    new @constructor arr, @type, @parent
 
   concat: ->
-    arr = proto.concat.apply @, arguments
-    new @constructor arr
+    @new proto.concat.apply @, arguments
 
   map: ->
-    arr = proto.map.apply @, arguments
-    new @constructor arr
+    @new proto.map.apply @, arguments
 
   filter: ->
-    arr = proto.filter.apply @, arguments
-    new @constructor arr
+    @new proto.filter.apply @, arguments
 
   build: (data = {}) ->
-    if @itemType and data instanceof @itemType 
+    if data instanceof @type 
       data 
-    else new @itemType data
+    else new @type data
 
   push: (args) ->
     if not Array.isArray args
       args = [ args ]
 
-    added = args.map @build.bind(@)
+    args.forEach (arg) =>
+      proto.push.apply @, [ @build(arg) ]
 
-    count = @length
-
-    added.forEach (add) =>
-      count = proto.push.apply @, [ add ]
-
-    count
+    args.length
 
   splice: (index, count, elements) ->
     args = [ index, count ]
-
     added = []
 
     if elements
       if not Array.isArray elements
         elements = [ elements ]
 
-      added = elements.map @build.bind(@)
-
-      if added.length
-        args.push added
+      args[3] - elements.map @build.bind(@)
 
     proto.splice.apply @, args
 
@@ -95,13 +80,9 @@ class List
     if not Array.isArray args
       args = [ args ]
 
-    added = args.map @build.bind(@)
+    args.forEach (arg) =>
+      proto.unshift.apply @, [ @build(arg) ]
 
-    count = @length
-
-    added.forEach (add) =>
-      count = proto.unshift.apply @, [ add ]
-
-    count
+    args.length
 
 module.exports = List

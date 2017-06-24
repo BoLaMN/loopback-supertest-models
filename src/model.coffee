@@ -23,12 +23,12 @@ formatInfo = (definition) ->
       type = type.modelName or type.name
 
     if Array.isArray type
-      subtype = type[0]
+      type = type[0]
 
-      if subtype.definition
-        subtype = subtype.definition
+      if type.definition
+        type = type.definition
 
-      type = [ subtype?.modelName or subtype?.name ]
+      type = type?.modelName or type?.name
 
     if type?
       result[key] ?= prop
@@ -40,10 +40,7 @@ formatInfo = (definition) ->
     for own k, v of value
       relation[k] = v 
 
-    if relation.type in [ 'embedsMany', 'hasMany' ]
-      type = [ relation.model ]
-    else
-      type = relation.model
+    type = relation.model
 
     if relation.property
       key = relation.property

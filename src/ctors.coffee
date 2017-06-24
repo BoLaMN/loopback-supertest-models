@@ -17,11 +17,10 @@ module.exports = (app, models) ->
       value: desc
 
   createCtor = (name, scope, parent) ->
-    if parent 
-      { methods, type, scopes, embed, fk, pk, as, multiple } = scope
-      { properties } = models[name]
-    else 
-      { properties, methods, aliases, scopes } = scope
+    { properties, methods, aliases, scopes 
+      type, fk, pk, as } = scope
+
+    properties ?= models[name].properties
 
     child = new Function(
       'return function ' + name + '() {\n' +
@@ -65,33 +64,16 @@ module.exports = (app, models) ->
     define child, 'properties', properties
     define child, 'scopes', scopes or {}
 
-    if parent 
-      define child, 'relationName', as
-      define child, 'multiple', multiple
-
-      if not embed and type isnt 'belongsTo'
-        Object.defineProperty child.prototype, fk,
-          get: -> parent[pk]
-          set: (v) -> parent[pk] = v 
-
-      if type is 'belongsTo'
-        Object.defineProperty child.prototype, pk,
-          get: -> parent[fk]
-          set: (v) -> parent[fk] = v 
-
     child
 
   class Model
-    constructor: (data, parent) ->
+    constructor: (data) ->
 
       for own key, value of data
         @[key] = value 
         
-      if parent 
-        define @, 'parent', parent
-
       for own key, scope of @constructor.scopes 
-        { as, multiple, model } = scope
+        { as, model } = scope
 
         if not model
           continue 
@@ -101,22 +83,17 @@ module.exports = (app, models) ->
         if not data[as]
           continue 
 
-        if multiple
+        if Array.isArray data[as]
           @[as] = new List data[as], @[key]
         else 
           @[as] = new @[key] data[as] 
 
-      for own propertyName, property of @constructor.properties
-        if Array.isArray property.type
-          type = property.type[0]
-        else 
-          type = property.type
+      for own name, property of @constructor.properties
+        if property.type?.toLowerCase() is 'objectid'
+          @[name] = objectid()
 
-        if type?.toLowerCase() is 'objectid'
-          @[propertyName] = objectid()
-
-        if @[propertyName] is undefined and property.default
-          @[propertyName] = property.default
+        if @[name] is undefined and property.default
+          @[name] = property.default
 
     toJSON: ->
       obj = {} 

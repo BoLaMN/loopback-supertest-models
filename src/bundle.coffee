@@ -39,7 +39,7 @@ module.exports = (app) ->
 
       if property not in [ 'scopes', 'methods', 'aliases', 'url' ]
         if relations[property]?.modelTo
-          { modelTo, name, embed, multiple, keyFrom, keyTo, type } = relations[property]
+          { modelTo, name, embed, keyFrom, keyTo, type } = relations[property]
 
           if type in [ 'belongsTo', 'hasOne' ]
             pk = keyTo
@@ -58,8 +58,6 @@ module.exports = (app) ->
           model[property].pk = pk 
           
           model[property].type = type 
-          model[property].embed = embed
-          model[property].multiple = multiple
           model[property].model = modelTo.modelName
 
           addModelInfo modelTo.modelName
@@ -100,36 +98,36 @@ module.exports = (app) ->
 
     if method.isReturningArray()
       action.multiple = true
+    
+    addAccept = ({ arg, type, http }) ->
+      if Array.isArray type 
+        type = type[0]
+
+      action.accepts.push
+        name: arg
+        source: http?.source or 'query'
+        type: type
+
+    addReturn = ({ arg, type, root }) ->
+      if Array.isArray type 
+        type = type[0]
+
+      action.returns.push
+        name: arg
+        root: root
+        type: type
 
     if Array.isArray accepts
-      action.accepts = accepts
+      accepts
         .filter ({ http, type, arg }) ->
           arg in [ 'filter', 'where' ] or
           http?.source in [ 'path', 'query', 'body' ] and type? 
-        .map ({ arg, type, http }) ->
-          name: arg 
-          source: http?.source or 'query'
-          type: type 
-    else 
-      action.accepts = [
-        name: accepts.arg
-        source: accepts.http?.source
-        type: accepts.type
-      ]
+        .forEach addAccept
+    else addAccept accepts
 
     if Array.isArray returns
-      action.returns = returns.map ({ arg, root, type }) ->
-        if Array.isArray type 
-          type = type[0]
-        name: arg 
-        root: root
-        type: type 
-    else 
-      action.returns = [
-        name: returns.arg
-        root: returns.root
-        type: returns.type
-      ]
+      returns.forEach addReturn
+    else addReturn returns
 
     sharedMethod.aliases.forEach (alias) ->
       model.aliases ?= {}

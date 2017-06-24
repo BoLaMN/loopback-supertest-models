@@ -25,7 +25,7 @@ extend = function() {
 };
 
 formatInfo = function(definition) {
-  var k, key, prop, property, ref, ref1, ref2, relation, result, subtype, type, v, value;
+  var k, key, prop, property, ref, ref1, relation, result, type, v, value;
   result = {};
   ref = definition.properties;
   for (key in ref) {
@@ -41,11 +41,11 @@ formatInfo = function(definition) {
       type = type.modelName || type.name;
     }
     if (Array.isArray(type)) {
-      subtype = type[0];
-      if (subtype.definition) {
-        subtype = subtype.definition;
+      type = type[0];
+      if (type.definition) {
+        type = type.definition;
       }
-      type = [(subtype != null ? subtype.modelName : void 0) || (subtype != null ? subtype.name : void 0)];
+      type = (type != null ? type.modelName : void 0) || (type != null ? type.name : void 0);
     }
     if (type != null) {
       if (result[key] == null) {
@@ -63,11 +63,7 @@ formatInfo = function(definition) {
       v = value[k];
       relation[k] = v;
     }
-    if ((ref2 = relation.type) === 'embedsMany' || ref2 === 'hasMany') {
-      type = [relation.model];
-    } else {
-      type = relation.model;
-    }
+    type = relation.model;
     if (relation.property) {
       key = relation.property;
     }

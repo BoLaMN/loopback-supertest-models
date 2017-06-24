@@ -1,11 +1,15 @@
 'use strict';
-var List, proto;
+var List, proto,
+  extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  hasProp = {}.hasOwnProperty;
 
 proto = Array.prototype;
 
-List = (function() {
+List = (function(superClass) {
+  extend(List, superClass);
+
   function List(data, type, parent) {
-    var collection, e, err, ref;
+    var collection, define, e, err, ref;
     collection = [];
     if (!type) {
       type = (ref = data[0]) != null ? ref.constructor : void 0;
@@ -13,7 +17,19 @@ List = (function() {
     if (Array.isArray(type)) {
       type = type[0];
     }
-    this.injectClassMethods(collection, type, parent);
+    define = function(prop, desc) {
+      if (desc == null) {
+        return;
+      }
+      return Object.defineProperty(collection, prop, {
+        writable: false,
+        enumerable: false,
+        value: desc
+      });
+    };
+    collection.__proto__ = this;
+    define('parent', parent);
+    define('type', type);
     if (typeof data === 'string' && /^\[.+\]$|^\{.+\}$/.test(data)) {
       try {
         data = JSON.parse(data);
@@ -30,70 +46,43 @@ List = (function() {
     return collection;
   }
 
-  List.prototype.injectClassMethods = function(collection, type, parent) {
-    var define, key, ref, value;
-    define = function(prop, desc) {
-      if (desc == null) {
-        return;
-      }
-      return Object.defineProperty(collection, prop, {
-        writable: false,
-        enumerable: false,
-        value: desc
-      });
-    };
-    ref = this;
-    for (key in ref) {
-      value = ref[key];
-      define(key, value);
-    }
-    define('parent', parent);
-    define('itemType', type);
-    return collection;
+  List.prototype["new"] = function(arr) {
+    return new this.constructor(arr, this.type, this.parent);
   };
 
   List.prototype.concat = function() {
-    var arr;
-    arr = proto.concat.apply(this, arguments);
-    return new this.constructor(arr);
+    return this["new"](proto.concat.apply(this, arguments));
   };
 
   List.prototype.map = function() {
-    var arr;
-    arr = proto.map.apply(this, arguments);
-    return new this.constructor(arr);
+    return this["new"](proto.map.apply(this, arguments));
   };
 
   List.prototype.filter = function() {
-    var arr;
-    arr = proto.filter.apply(this, arguments);
-    return new this.constructor(arr);
+    return this["new"](proto.filter.apply(this, arguments));
   };
 
   List.prototype.build = function(data) {
     if (data == null) {
       data = {};
     }
-    if (this.itemType && data instanceof this.itemType) {
+    if (data instanceof this.type) {
       return data;
     } else {
-      return new this.itemType(data);
+      return new this.type(data);
     }
   };
 
   List.prototype.push = function(args) {
-    var added, count;
     if (!Array.isArray(args)) {
       args = [args];
     }
-    added = args.map(this.build.bind(this));
-    count = this.length;
-    added.forEach((function(_this) {
-      return function(add) {
-        return count = proto.push.apply(_this, [add]);
+    args.forEach((function(_this) {
+      return function(arg) {
+        return proto.push.apply(_this, [_this.build(arg)]);
       };
     })(this));
-    return count;
+    return args.length;
   };
 
   List.prototype.splice = function(index, count, elements) {
@@ -104,31 +93,25 @@ List = (function() {
       if (!Array.isArray(elements)) {
         elements = [elements];
       }
-      added = elements.map(this.build.bind(this));
-      if (added.length) {
-        args.push(added);
-      }
+      args[3] - elements.map(this.build.bind(this));
     }
     return proto.splice.apply(this, args);
   };
 
   List.prototype.unshift = function(args) {
-    var added, count;
     if (!Array.isArray(args)) {
       args = [args];
     }
-    added = args.map(this.build.bind(this));
-    count = this.length;
-    added.forEach((function(_this) {
-      return function(add) {
-        return count = proto.unshift.apply(_this, [add]);
+    args.forEach((function(_this) {
+      return function(arg) {
+        return proto.unshift.apply(_this, [_this.build(arg)]);
       };
     })(this));
-    return count;
+    return args.length;
   };
 
   return List;
 
-})();
+})(Array);
 
 module.exports = List;

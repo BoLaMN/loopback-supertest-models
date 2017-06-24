@@ -32,7 +32,7 @@ module.exports = function(app) {
     return res;
   };
   set = function(properties, newProp, action, modelName) {
-    var as, base, base1, embed, fk, keyFrom, keyTo, model, modelTo, multiple, name, pk, property, ref, ref1, ref2, relations, results, type;
+    var as, base, base1, embed, fk, keyFrom, keyTo, model, modelTo, name, pk, property, ref, ref1, ref2, relations, results, type;
     model = configs[modelName];
     relations = app.models[modelName].relations;
     properties.push(newProp);
@@ -47,7 +47,7 @@ module.exports = function(app) {
       }
       if (property !== 'scopes' && property !== 'methods' && property !== 'aliases' && property !== 'url') {
         if ((ref = relations[property]) != null ? ref.modelTo : void 0) {
-          ref1 = relations[property], modelTo = ref1.modelTo, name = ref1.name, embed = ref1.embed, multiple = ref1.multiple, keyFrom = ref1.keyFrom, keyTo = ref1.keyTo, type = ref1.type;
+          ref1 = relations[property], modelTo = ref1.modelTo, name = ref1.name, embed = ref1.embed, keyFrom = ref1.keyFrom, keyTo = ref1.keyTo, type = ref1.type;
           if (type === 'belongsTo' || type === 'hasOne') {
             pk = keyTo;
             fk = keyFrom;
@@ -64,8 +64,6 @@ module.exports = function(app) {
           model[property].fk = fk;
           model[property].pk = pk;
           model[property].type = type;
-          model[property].embed = embed;
-          model[property].multiple = multiple;
           model[property].model = modelTo.modelName;
           addModelInfo(modelTo.modelName);
           relations = modelTo.relations;
@@ -98,7 +96,7 @@ module.exports = function(app) {
     return results;
   };
   adapter.allRoutes().forEach(function(route) {
-    var accepts, action, arr, base, method, model, modelName, name, parts, prop, ref, restClass, returns, sharedMethod, str;
+    var accepts, action, addAccept, addReturn, arr, base, method, model, modelName, name, parts, prop, restClass, returns, sharedMethod, str;
     method = adapter.getRestMethodByName(route.method);
     restClass = method.restClass, accepts = method.accepts, returns = method.returns, sharedMethod = method.sharedMethod, name = method.name;
     modelName = restClass.name;
@@ -112,50 +110,43 @@ module.exports = function(app) {
     if (method.isReturningArray()) {
       action.multiple = true;
     }
+    addAccept = function(arg1) {
+      var arg, http, type;
+      arg = arg1.arg, type = arg1.type, http = arg1.http;
+      if (Array.isArray(type)) {
+        type = type[0];
+      }
+      return action.accepts.push({
+        name: arg,
+        source: (http != null ? http.source : void 0) || 'query',
+        type: type
+      });
+    };
+    addReturn = function(arg1) {
+      var arg, root, type;
+      arg = arg1.arg, type = arg1.type, root = arg1.root;
+      if (Array.isArray(type)) {
+        type = type[0];
+      }
+      return action.returns.push({
+        name: arg,
+        root: root,
+        type: type
+      });
+    };
     if (Array.isArray(accepts)) {
-      action.accepts = accepts.filter(function(arg1) {
+      accepts.filter(function(arg1) {
         var arg, http, ref, type;
         http = arg1.http, type = arg1.type, arg = arg1.arg;
         return (arg === 'filter' || arg === 'where') || ((ref = http != null ? http.source : void 0) === 'path' || ref === 'query' || ref === 'body') && (type != null);
-      }).map(function(arg1) {
-        var arg, http, type;
-        arg = arg1.arg, type = arg1.type, http = arg1.http;
-        return {
-          name: arg,
-          source: (http != null ? http.source : void 0) || 'query',
-          type: type
-        };
-      });
+      }).forEach(addAccept);
     } else {
-      action.accepts = [
-        {
-          name: accepts.arg,
-          source: (ref = accepts.http) != null ? ref.source : void 0,
-          type: accepts.type
-        }
-      ];
+      addAccept(accepts);
     }
     if (Array.isArray(returns)) {
-      action.returns = returns.map(function(arg1) {
-        var arg, root, type;
-        arg = arg1.arg, root = arg1.root, type = arg1.type;
-        if (Array.isArray(type)) {
-          type = type[0];
-        }
-        return {
-          name: arg,
-          root: root,
-          type: type
-        };
-      });
+      returns.forEach(addReturn);
     } else {
-      action.returns = [
-        {
-          name: returns.arg,
-          root: returns.root,
-          type: returns.type
-        }
-      ];
+      addReturn(returns);
     }
     sharedMethod.aliases.forEach(function(alias) {
       if (model.aliases == null) {
