@@ -34,10 +34,27 @@ module.exports = (app, models, configs) ->
     child
 
   buildRelationModel = (parent, scope) ->
-    { model, type, scopes, embed, fk, pk, as, multiple } = scope
+    { methods, model, type, scopes, embed, fk, pk, as, multiple } = scope
 
     ctor = createCtor model
  
+    Object.keys(methods or {}).forEach (methodName) ->
+      method = methods[methodName]
+      
+      define ctor, methodName, (args...) ->
+        if typeof args[args.length - 1] is 'function'
+          callback = args.pop()
+        
+        if parent.id
+          args.unshift parent.id
+
+        req = createRequest ctor, method, args
+        
+        if callback  
+          return req.end callback
+
+        req 
+
     define ctor, 'properties', models[model].properties
     define ctor, 'scopes', scopes or {}
 
@@ -63,9 +80,12 @@ module.exports = (app, models, configs) ->
         @[key] = value 
 
       for own key, scope of @constructor.scopes 
-        define @, key, buildRelationModel @, scope 
+        { as, multiple, model } = scope
 
-        { as, multiple } = scope
+        if not model
+          continue 
+
+        define @, key, buildRelationModel @, scope 
 
         if not data[as]
           continue 
@@ -81,21 +101,21 @@ module.exports = (app, models, configs) ->
         else 
           type = property.type
 
-        if type.toLowerCase() is 'objectid'
+        if type?.toLowerCase() is 'objectid'
           @[propertyName] = objectid()
 
         if @[propertyName] is undefined and property.default
           @[propertyName] = property.default
 
     toJSON: ->
+      obj = {} 
 
-      toJsonReplacer = (key, val) ->
-        val = value
+      for own key, val of @
         if typeof key is 'string' and key.charAt(0) is '$' and key.charAt(1) is '$'
-          val = undefined
-        val
+          continue
+        obj[key] = val
 
-      JSON.stringify @, toJsonReplacer
+      obj
     
   Object.keys(configs).forEach (modelName) ->
     { properties, methods, aliases, scopes } = configs[modelName]
@@ -112,7 +132,7 @@ module.exports = (app, models, configs) ->
         if typeof args[args.length - 1] is 'function'
           callback = args.pop()
 
-        req = createRequest model, method, [ @id ], args
+        req = createRequest model, method, args
         
         if callback  
           return req.end callback

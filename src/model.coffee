@@ -17,8 +17,6 @@ formatInfo = (definition) ->
     for own k, v of property
       prop[k] = v 
 
-    result[key] = prop
-
     type = property.type
 
     if typeof type is 'function'
@@ -32,7 +30,9 @@ formatInfo = (definition) ->
 
       type = [ subtype?.modelName or subtype?.name ]
 
-    result[key].type = type
+    if type?
+      result[key] ?= prop
+      result[key].type = type
 
   for key, value of definition.settings.relations
     relation = {}

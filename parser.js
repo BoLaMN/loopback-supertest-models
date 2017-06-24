@@ -10,7 +10,7 @@ module.exports = function(models, model, returns) {
       return res.text += chunk;
     });
     res.on('end', function() {
-      var body, ctor, err, key, name, ref, root, type;
+      var body, ctor, err, i, key, len, name, ref, root, type;
       body = res.text && JSON.parse(res.text);
       if (res.statusCode >= 400) {
         if (typeof body === 'object' && body.error) {
@@ -25,8 +25,8 @@ module.exports = function(models, model, returns) {
         }
         return fn(null, err);
       }
-      for (name in returns) {
-        ref = returns[name], root = ref.root, type = ref.type;
+      for (i = 0, len = returns.length; i < len; i++) {
+        ref = returns[i], name = ref.name, root = ref.root, type = ref.type;
         if (!root) {
           body = body[name];
         }

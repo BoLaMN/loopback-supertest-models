@@ -36,7 +36,6 @@ formatInfo = function(definition) {
       v = property[k];
       prop[k] = v;
     }
-    result[key] = prop;
     type = property.type;
     if (typeof type === 'function') {
       type = type.modelName || type.name;
@@ -48,7 +47,12 @@ formatInfo = function(definition) {
       }
       type = [(subtype != null ? subtype.modelName : void 0) || (subtype != null ? subtype.name : void 0)];
     }
-    result[key].type = type;
+    if (type != null) {
+      if (result[key] == null) {
+        result[key] = prop;
+      }
+      result[key].type = type;
+    }
   }
   ref1 = definition.settings.relations;
   for (key in ref1) {

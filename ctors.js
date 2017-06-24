@@ -35,9 +35,28 @@ module.exports = function(app, models, configs) {
     return child;
   };
   buildRelationModel = function(parent, scope) {
-    var as, ctor, embed, fk, model, multiple, pk, scopes, type;
-    model = scope.model, type = scope.type, scopes = scope.scopes, embed = scope.embed, fk = scope.fk, pk = scope.pk, as = scope.as, multiple = scope.multiple;
+    var as, ctor, embed, fk, methods, model, multiple, pk, scopes, type;
+    methods = scope.methods, model = scope.model, type = scope.type, scopes = scope.scopes, embed = scope.embed, fk = scope.fk, pk = scope.pk, as = scope.as, multiple = scope.multiple;
     ctor = createCtor(model);
+    Object.keys(methods || {}).forEach(function(methodName) {
+      var method;
+      method = methods[methodName];
+      return define(ctor, methodName, function() {
+        var args, callback, req;
+        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+        if (typeof args[args.length - 1] === 'function') {
+          callback = args.pop();
+        }
+        if (parent.id) {
+          args.unshift(parent.id);
+        }
+        req = createRequest(ctor, method, args);
+        if (callback) {
+          return req.end(callback);
+        }
+        return req;
+      });
+    });
     define(ctor, 'properties', models[model].properties);
     define(ctor, 'scopes', scopes || {});
     define(ctor, 'relationName', as);
@@ -66,7 +85,7 @@ module.exports = function(app, models, configs) {
   };
   Model = (function() {
     function Model(data) {
-      var as, key, multiple, property, propertyName, ref, ref1, scope, type, value;
+      var as, key, model, multiple, property, propertyName, ref, ref1, scope, type, value;
       for (key in data) {
         if (!hasProp.call(data, key)) continue;
         value = data[key];
@@ -76,8 +95,11 @@ module.exports = function(app, models, configs) {
       for (key in ref) {
         if (!hasProp.call(ref, key)) continue;
         scope = ref[key];
+        as = scope.as, multiple = scope.multiple, model = scope.model;
+        if (!model) {
+          continue;
+        }
         define(this, key, buildRelationModel(this, scope));
-        as = scope.as, multiple = scope.multiple;
         if (!data[as]) {
           continue;
         }
@@ -96,7 +118,7 @@ module.exports = function(app, models, configs) {
         } else {
           type = property.type;
         }
-        if (type.toLowerCase() === 'objectid') {
+        if ((type != null ? type.toLowerCase() : void 0) === 'objectid') {
           this[propertyName] = objectid();
         }
         if (this[propertyName] === void 0 && property["default"]) {
@@ -106,15 +128,18 @@ module.exports = function(app, models, configs) {
     }
 
     Model.prototype.toJSON = function() {
-      var toJsonReplacer;
-      toJsonReplacer = function(key, val) {
-        val = value;
+      var key, obj, ref, val;
+      obj = {};
+      ref = this;
+      for (key in ref) {
+        if (!hasProp.call(ref, key)) continue;
+        val = ref[key];
         if (typeof key === 'string' && key.charAt(0) === '$' && key.charAt(1) === '$') {
-          val = void 0;
+          continue;
         }
-        return val;
-      };
-      return JSON.stringify(this, toJsonReplacer);
+        obj[key] = val;
+      }
+      return obj;
     };
 
     return Model;
@@ -135,7 +160,7 @@ module.exports = function(app, models, configs) {
         if (typeof args[args.length - 1] === 'function') {
           callback = args.pop();
         }
-        req = createRequest(model, method, [this.id], args);
+        req = createRequest(model, method, args);
         if (callback) {
           return req.end(callback);
         }

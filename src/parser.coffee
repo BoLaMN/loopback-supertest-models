@@ -27,7 +27,7 @@ module.exports = (models, model, returns) ->
         
         return fn null, err
 
-      for name, { root, type } of returns
+      for { name, root, type } in returns
 
         if not root
           body = body[name]

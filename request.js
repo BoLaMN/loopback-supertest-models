@@ -10,7 +10,7 @@ module.exports = function(app, models) {
   adapter = app.handler('rest').adapter;
   isAcceptable = function(val, type) {
     var array;
-    array = Array.isArray(type) || type.toLowerCase() === 'array' || type !== 'any';
+    array = Array.isArray(type) || type.toLowerCase() === 'array' || type === 'any';
     if (array) {
       return true;
     }
@@ -26,53 +26,43 @@ module.exports = function(app, models) {
       return val;
     }
   };
-  return function(model, arg, ctorArgs, args) {
-    var accepts, auth, body, headers, method, process, query, request, returns, url;
+  return function(model, arg, args) {
+    var accepts, auth, body, headers, i, len, method, name, query, ref, request, returns, source, type, url, val;
     url = arg.url, accepts = arg.accepts, returns = arg.returns, method = arg.method;
     query = body = headers = void 0;
-    process = function(data) {
-      var name, ref, results, source, type, val;
-      results = [];
-      for (name in accepts) {
-        ref = accepts[name], source = ref.source, type = ref.type;
-        val = data.shift();
-        if ((val == null) || !isAcceptable(val, type)) {
-          continue;
-        }
-        switch (source) {
-          case 'body':
-            results.push(body = val);
-            break;
-          case 'form':
-          case 'formData':
-            if (body == null) {
-              body = {};
-            }
-            results.push(body[name] = val);
-            break;
-          case 'query':
-            if (query == null) {
-              query = {};
-            }
-            results.push(query[name] = serializeValue(val, type));
-            break;
-          case 'header':
-            if (headers == null) {
-              headers = {};
-            }
-            results.push(headers[name] = val);
-            break;
-          case 'path':
-            results.push(url = url.replace(':' + name, val));
-            break;
-          default:
-            results.push(void 0);
-        }
+    for (i = 0, len = accepts.length; i < len; i++) {
+      ref = accepts[i], name = ref.name, source = ref.source, type = ref.type;
+      val = args.shift();
+      if ((val == null) || !isAcceptable(val, type)) {
+        continue;
       }
-      return results;
-    };
-    process(ctorArgs);
-    process(args);
+      switch (source) {
+        case 'body':
+          body = val;
+          break;
+        case 'form':
+        case 'formData':
+          if (body == null) {
+            body = {};
+          }
+          body[name] = val;
+          break;
+        case 'query':
+          if (query == null) {
+            query = {};
+          }
+          query[name] = serializeValue(val, type);
+          break;
+        case 'header':
+          if (headers == null) {
+            headers = {};
+          }
+          headers[name] = val;
+          break;
+        case 'path':
+          url = url.replace(':' + name, val);
+      }
+    }
     request = supertest(app)[method](restApiRoot + url);
     request.type('json');
     if (body) {
@@ -86,9 +76,7 @@ module.exports = function(app, models) {
     }
     auth = request.auth;
     request.auth = function(token) {
-      auth.call(request, token, {
-        type: 'bearer'
-      });
+      request.set('Authorization', 'Bearer ' + token);
       return request;
     };
     request.parse(parser(models, model, returns));

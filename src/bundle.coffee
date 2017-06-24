@@ -72,7 +72,7 @@ module.exports = (app, models) ->
         if not relations
           continue 
 
-        for name, { embed, keyFrom, modelTo } of relations when embed 
+        for name, { embed, keyFrom, modelTo } of relations when embed and modelTo?
           model[property].scopes ?= {}
 
           model[property].scopes[keyFrom] ?= 
@@ -97,51 +97,74 @@ module.exports = (app, models) ->
     action =
       url: route.path
       method: route.verb.toLowerCase() or 'get'
-      accepts: {}
-      returns: {}
+      accepts: []
+      returns: []
 
     if method.isReturningArray()
       action.multiple = true
 
-    accepts
-      .filter ({ http }) ->
-         http?.source in [ 'path', 'query', 'body' ] 
-      .forEach ({ arg, type, http }) ->
-        action.accepts[arg] = 
-          source: http.source
+    if Array.isArray accepts
+      action.accepts = accepts
+        .filter ({ http, type, arg }) ->
+          arg in [ 'filter', 'where' ] or
+          http?.source in [ 'path', 'query', 'body' ] and type? 
+        .map ({ arg, type, http }) ->
+          name: arg 
+          source: http?.source or 'query'
           type: type 
+    else 
+      action.accepts = [
+        name: accepts.arg
+        source: accepts.http?.source
+        type: accepts.type
+      ]
 
-    returns.forEach ({ arg, root, type }) ->
-      if Array.isArray type 
-        type = type[0]
-
-      action.returns[arg] = 
+    if Array.isArray returns
+      action.returns = returns.map ({ arg, root, type }) ->
+        if Array.isArray type 
+          type = type[0]
+        name: arg 
         root: root
         type: type 
+    else 
+      action.returns = [
+        name: returns.arg
+        root: returns.root
+        type: returns.type
+      ]
 
     sharedMethod.aliases.forEach (alias) ->
       model.aliases ?= {}
       model.aliases[alias] = name.replace 'prototype.', ''
 
     if sharedMethod.isStatic
+      #console.log action
+
       model.methods ?= {}
       model.methods[name] = action
     else
       arr = method.sharedMethod.name.replace /__/g, ' '
-      arrParts = compact arr.split ' '
-      prop = arrParts[0]
+      parts = compact arr.split ' '
+      prop = parts[0]
 
-      if arrParts.length > 1
-        arrParts.shift()
+      if parts.length > 1
+        parts.shift()
 
-      if prop is arrParts[0]
+      action.accepts.unshift
+        name: 'id'
+        source: 'path'
+        type: 'any'
+
+      #console.log action
+
+      if prop is parts[0]
         configs[modelName].methods ?= {}
         configs[modelName].methods[prop] = action
       else
-        arrParts = arrParts.join '.scopes.'
-        arrObject = [ 'scopes' ].concat(arrParts.split('.')).concat [ 'methods' ]
+        parts = parts.join '.scopes.'
+        str = [ 'scopes' ].concat(parts.split('.')).concat [ 'methods' ]
 
-        set configs, arrObject, prop, action, modelName
+        set configs, str, prop, action, modelName
 
     configs
 

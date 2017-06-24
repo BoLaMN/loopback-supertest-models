@@ -10,7 +10,7 @@ module.exports = (app, models) ->
   isAcceptable = (val, type) ->
     array = Array.isArray(type) or 
             type.toLowerCase() is 'array' or 
-            type isnt 'any'
+            type is 'any'
 
     if array
       return true
@@ -25,34 +25,38 @@ module.exports = (app, models) ->
       JSON.stringify val
     else val
 
-  (model, { url, accepts, returns, method }, ctorArgs, args) ->
+  (model, { url, accepts, returns, method }, args) ->
     query = body = headers = undefined 
 
-    process = (data) ->
-      for name, { source, type } of accepts 
-        val = data.shift()
-
-        if not val? or not isAcceptable val, type
-          continue
-
-        switch source
-          when 'body'
-            body = val
-          when 'form', 'formData'
-            body ?= {}
-            body[name] = val
-          when 'query'
-            query ?= {}
-            query[name] = serializeValue val, type 
-          when 'header'
-            headers ?= {}
-            headers[name] = val
-          when 'path'
-            url = url.replace ':' + name, val
-
-    process ctorArgs
-    process args 
+    #console.log 'args', args
+    #console.log 'accepts', accepts
     
+    for { name, source, type } in accepts 
+      val = args.shift()
+
+      if not val? or not isAcceptable val, type
+        continue
+
+      switch source
+        when 'body'
+          body = val
+        when 'form', 'formData'
+          body ?= {}
+          body[name] = val
+        when 'query'
+          query ?= {}
+          query[name] = serializeValue val, type 
+        when 'header'
+          headers ?= {}
+          headers[name] = val
+        when 'path'
+          url = url.replace ':' + name, val
+
+    #console.log 'url', url
+    #console.log 'query', query 
+    #console.log 'body', body 
+    #console.log 'headers', headers
+
     request = supertest(app)[method](restApiRoot + url)
     request.type 'json' 
 
@@ -68,7 +72,7 @@ module.exports = (app, models) ->
     auth = request.auth 
 
     request.auth = (token) ->
-      auth.call request, token, type: 'bearer'
+      request.set 'Authorization', 'Bearer ' + token 
       request
 
     request.parse parser(models, model, returns)
