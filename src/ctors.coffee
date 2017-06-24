@@ -1,10 +1,14 @@
 List = require './list'
 
 objectid = require './objectid'
-request = require './request'
+request  = require './request'
+bundle   = require './bundle'
 
-module.exports = (app, models, configs) ->
-  createRequest = request app, models 
+module.exports = (app, models) ->
+  configs = bundle app
+  apiRoot = app.get 'restApiRoot'
+
+  createRequest = request app, apiRoot, models 
 
   define = (cls, prop, desc) ->
     Object.defineProperty cls, prop,
@@ -12,7 +16,13 @@ module.exports = (app, models, configs) ->
       enumerable: false
       value: desc
 
-  createCtor = (name) ->
+  createCtor = (name, scope, parent) ->
+    if parent 
+      { methods, type, scopes, embed, fk, pk, as, multiple } = scope
+      { properties } = models[name]
+    else 
+      { properties, methods, aliases, scopes } = scope
+
     child = new Function(
       'return function ' + name + '() {\n' +
       '  return ' + name + '.__super__.constructor.apply(this, arguments);\n' +
@@ -31,53 +41,54 @@ module.exports = (app, models, configs) ->
     child.prototype = new ctor
     child.__super__ = Model.prototype
 
-    child
-
-  buildRelationModel = (parent, scope) ->
-    { methods, model, type, scopes, embed, fk, pk, as, multiple } = scope
-
-    ctor = createCtor model
- 
     Object.keys(methods or {}).forEach (methodName) ->
       method = methods[methodName]
       
-      define ctor, methodName, (args...) ->
+      define child, methodName, (args...) ->
         if typeof args[args.length - 1] is 'function'
           callback = args.pop()
         
-        if parent.id
+        if parent
           args.unshift parent.id
 
-        req = createRequest ctor, method, args
+        req = createRequest child, method, args
         
         if callback  
           return req.end callback
 
         req 
 
-    define ctor, 'properties', models[model].properties
-    define ctor, 'scopes', scopes or {}
+    Object.keys(aliases or {}).forEach (aliasName) ->
+      alias = aliases[aliasName]
+      define child, aliasName, child[alias]
 
-    define ctor, 'relationName', as
-    define ctor, 'multiple', multiple
+    define child, 'properties', properties
+    define child, 'scopes', scopes or {}
 
-    if not embed and type isnt 'belongsTo'
-      Object.defineProperty ctor.prototype, fk,
-        get: -> parent[pk]
-        set: (v) -> parent[pk] = v 
+    if parent 
+      define child, 'relationName', as
+      define child, 'multiple', multiple
 
-    if type is 'belongsTo'
-      Object.defineProperty ctor.prototype, pk,
-        get: -> parent[fk]
-        set: (v) -> parent[fk] = v 
+      if not embed and type isnt 'belongsTo'
+        Object.defineProperty child.prototype, fk,
+          get: -> parent[pk]
+          set: (v) -> parent[pk] = v 
 
-    ctor
+      if type is 'belongsTo'
+        Object.defineProperty child.prototype, pk,
+          get: -> parent[fk]
+          set: (v) -> parent[fk] = v 
+
+    child
 
   class Model
-    constructor: (data) ->
+    constructor: (data, parent) ->
 
       for own key, value of data
         @[key] = value 
+        
+      if parent 
+        define @, 'parent', parent
 
       for own key, scope of @constructor.scopes 
         { as, multiple, model } = scope
@@ -85,7 +96,7 @@ module.exports = (app, models, configs) ->
         if not model
           continue 
 
-        define @, key, buildRelationModel @, scope 
+        define @, key, createCtor model, scope, @
 
         if not data[as]
           continue 
@@ -118,31 +129,6 @@ module.exports = (app, models, configs) ->
       obj
     
   Object.keys(configs).forEach (modelName) ->
-    { properties, methods, aliases, scopes } = configs[modelName]
-    
-    model = createCtor modelName
-
-    define model, 'properties', properties or {}
-    define model, 'scopes', scopes or {}
-
-    Object.keys(methods or {}).forEach (methodName) ->
-      method = methods[methodName]
-      
-      define model, methodName, (args...) ->
-        if typeof args[args.length - 1] is 'function'
-          callback = args.pop()
-
-        req = createRequest model, method, args
-        
-        if callback  
-          return req.end callback
-
-        req 
-
-    Object.keys(aliases or {}).forEach (aliasName) ->
-      alias = aliases[aliasName]
-      define model, aliasName, model[alias]
-
-    models[modelName] = model
+    models[modelName] = createCtor modelName, configs[modelName]
 
   models

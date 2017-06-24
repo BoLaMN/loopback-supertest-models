@@ -31,16 +31,20 @@ module.exports = (models, model, returns) ->
 
         if not root
           body = body[name]
- 
-        ctor = models[name] or 
-               models[type] or 
-               model 
 
-        if Array.isArray body 
-          body = new List body, ctor
-        else 
-          body = new ctor body
- 
+        if model.name is type 
+          ctor = model 
+
+        ctor ?= models[name] or 
+                models[type] or
+                model 
+
+        if ctor 
+          if Array.isArray body 
+            body = new List body, ctor
+          else 
+            body = new ctor body
+   
       fn null, body
 
     return

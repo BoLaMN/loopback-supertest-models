@@ -1,11 +1,11 @@
 {
   "name": "loopback-supertest-models",
-  "version": "2.0.5",
+  "version": "2.1.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "compile": "coffee --bare --no-header --output . --compile src/"
+    "compile": "coffee --bare --no-header --output dist/ --compile src/"
   },
   "author": {
     "name": "Nathan Bolam",

@@ -104,14 +104,4 @@ class List
 
     count
 
-  toObject: (args...) ->
-    @map (item) -> 
-      item.toObject args...
-
-  toJSON: ->
-    @toObject true
-
-  toString: ->
-    JSON.stringify @toJSON()
-
 module.exports = List

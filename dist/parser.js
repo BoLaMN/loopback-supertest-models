@@ -30,11 +30,18 @@ module.exports = function(models, model, returns) {
         if (!root) {
           body = body[name];
         }
-        ctor = models[name] || models[type] || model;
-        if (Array.isArray(body)) {
-          body = new List(body, ctor);
-        } else {
-          body = new ctor(body);
+        if (model.name === type) {
+          ctor = model;
+        }
+        if (ctor == null) {
+          ctor = models[name] || models[type] || model;
+        }
+        if (ctor) {
+          if (Array.isArray(body)) {
+            body = new List(body, ctor);
+          } else {
+            body = new ctor(body);
+          }
         }
       }
       return fn(null, body);

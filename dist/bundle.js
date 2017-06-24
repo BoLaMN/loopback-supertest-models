@@ -1,13 +1,12 @@
-var createCtors, modelInfo;
+var modelInfo;
 
 modelInfo = require('./model');
 
-createCtors = require('./ctors');
-
-module.exports = function(app, models) {
-  var adapter, addModelInfo, compact, reducer, set;
+module.exports = function(app) {
+  var adapter, addModelInfo, compact, configs, set;
+  configs = {};
   adapter = app.handler('rest').adapter;
-  addModelInfo = function(configs, modelName) {
+  addModelInfo = function(modelName) {
     var base;
     if (configs[modelName] == null) {
       configs[modelName] = {};
@@ -32,11 +31,12 @@ module.exports = function(app, models) {
     }
     return res;
   };
-  set = function(configs, properties, newProp, action, modelName) {
-    var as, base, base1, dataSource, embed, fk, keyFrom, keyTo, model, modelTo, multiple, name, pk, property, ref, ref1, ref2, ref3, relations, type;
+  set = function(properties, newProp, action, modelName) {
+    var as, base, base1, embed, fk, keyFrom, keyTo, model, modelTo, multiple, name, pk, property, ref, ref1, ref2, relations, results, type;
     model = configs[modelName];
-    ref = app.models[modelName], relations = ref.relations, dataSource = ref.dataSource;
+    relations = app.models[modelName].relations;
     properties.push(newProp);
+    results = [];
     while (properties.length) {
       property = properties.shift();
       if (!model) {
@@ -46,8 +46,8 @@ module.exports = function(app, models) {
         model[property] = {};
       }
       if (property !== 'scopes' && property !== 'methods' && property !== 'aliases' && property !== 'url') {
-        if ((ref1 = relations[property]) != null ? ref1.modelTo : void 0) {
-          ref2 = relations[property], modelTo = ref2.modelTo, name = ref2.name, embed = ref2.embed, multiple = ref2.multiple, keyFrom = ref2.keyFrom, keyTo = ref2.keyTo, type = ref2.type;
+        if ((ref = relations[property]) != null ? ref.modelTo : void 0) {
+          ref1 = relations[property], modelTo = ref1.modelTo, name = ref1.name, embed = ref1.embed, multiple = ref1.multiple, keyFrom = ref1.keyFrom, keyTo = ref1.keyTo, type = ref1.type;
           if (type === 'belongsTo' || type === 'hasOne') {
             pk = keyTo;
             fk = keyFrom;
@@ -67,7 +67,7 @@ module.exports = function(app, models) {
           model[property].embed = embed;
           model[property].multiple = multiple;
           model[property].model = modelTo.modelName;
-          addModelInfo(configs, modelTo.modelName);
+          addModelInfo(modelTo.modelName);
           relations = modelTo.relations;
         }
       }
@@ -77,7 +77,7 @@ module.exports = function(app, models) {
           continue;
         }
         for (name in relations) {
-          ref3 = relations[name], embed = ref3.embed, keyFrom = ref3.keyFrom, modelTo = ref3.modelTo;
+          ref2 = relations[name], embed = ref2.embed, keyFrom = ref2.keyFrom, modelTo = ref2.modelTo;
           if (!(embed && (modelTo != null))) {
             continue;
           }
@@ -90,19 +90,19 @@ module.exports = function(app, models) {
               as: keyFrom
             };
           }
-          addModelInfo(configs, modelTo.modelName);
+          addModelInfo(modelTo.modelName);
         }
       }
-      model = model[property];
+      results.push(model = model[property]);
     }
-    return configs;
+    return results;
   };
-  reducer = function(configs, route) {
+  adapter.allRoutes().forEach(function(route) {
     var accepts, action, arr, base, method, model, modelName, name, parts, prop, ref, restClass, returns, sharedMethod, str;
     method = adapter.getRestMethodByName(route.method);
     restClass = method.restClass, accepts = method.accepts, returns = method.returns, sharedMethod = method.sharedMethod, name = method.name;
     modelName = restClass.name;
-    model = addModelInfo(configs, modelName);
+    model = addModelInfo(modelName);
     action = {
       url: route.path,
       method: route.verb.toLowerCase() || 'get',
@@ -167,7 +167,7 @@ module.exports = function(app, models) {
       if (model.methods == null) {
         model.methods = {};
       }
-      model.methods[name] = action;
+      return model.methods[name] = action;
     } else {
       arr = method.sharedMethod.name.replace(/__/g, ' ');
       parts = compact(arr.split(' '));
@@ -184,14 +184,13 @@ module.exports = function(app, models) {
         if ((base = configs[modelName]).methods == null) {
           base.methods = {};
         }
-        configs[modelName].methods[prop] = action;
+        return configs[modelName].methods[prop] = action;
       } else {
         parts = parts.join('.scopes.');
         str = ['scopes'].concat(parts.split('.')).concat(['methods']);
-        set(configs, str, prop, action, modelName);
+        return set(str, prop, action, modelName);
       }
     }
-    return configs;
-  };
-  return createCtors(app, models, adapter.allRoutes().reduce(reducer, {}));
+  });
+  return configs;
 };

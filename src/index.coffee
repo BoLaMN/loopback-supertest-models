@@ -1,14 +1,13 @@
+ctors = require './ctors'
 async = require 'async'
 
-bundle = require './bundle'
-
 module.exports = (app) ->
-  models = {}
-
   app.start()
+
+  models = {} 
 
   async.forEachOf app.models, (model, modelName, next) ->
     model._runWhenAttachedToApp next
-  , -> bundle(app, models)
+  , -> ctors app, models
 
-  models 
+  models

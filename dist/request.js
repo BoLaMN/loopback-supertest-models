@@ -4,11 +4,9 @@ parser = require('./parser');
 
 supertest = require('supertest');
 
-module.exports = function(app, models) {
-  var adapter, isAcceptable, restApiRoot, serializeValue;
-  restApiRoot = app.get('restApiRoot');
-  adapter = app.handler('rest').adapter;
-  isAcceptable = function(val, type) {
+module.exports = function(app, restApiRoot, models) {
+  var acceptable, serialize;
+  acceptable = function(val, type) {
     var array;
     array = Array.isArray(type) || type.toLowerCase() === 'array' || type === 'any';
     if (array) {
@@ -19,7 +17,7 @@ module.exports = function(app, models) {
     }
     return typeof val === type;
   };
-  serializeValue = function(val, type) {
+  serialize = function(val, type) {
     if ((type === 'object' || type === 'string') && typeof val === 'object') {
       return JSON.stringify(val);
     } else {
@@ -27,13 +25,13 @@ module.exports = function(app, models) {
     }
   };
   return function(model, arg, args) {
-    var accepts, auth, body, headers, i, len, method, name, query, ref, request, returns, source, type, url, val;
+    var accepts, body, headers, i, len, method, name, query, ref, request, returns, source, type, url, val;
     url = arg.url, accepts = arg.accepts, returns = arg.returns, method = arg.method;
     query = body = headers = void 0;
     for (i = 0, len = accepts.length; i < len; i++) {
       ref = accepts[i], name = ref.name, source = ref.source, type = ref.type;
       val = args.shift();
-      if ((val == null) || !isAcceptable(val, type)) {
+      if ((val == null) || !acceptable(val, type)) {
         continue;
       }
       switch (source) {
@@ -51,7 +49,7 @@ module.exports = function(app, models) {
           if (query == null) {
             query = {};
           }
-          query[name] = serializeValue(val, type);
+          query[name] = serialize(val, type);
           break;
         case 'header':
           if (headers == null) {
@@ -74,7 +72,6 @@ module.exports = function(app, models) {
     if (query) {
       request.query(query);
     }
-    auth = request.auth;
     request.auth = function(token) {
       request.set('Authorization', 'Bearer ' + token);
       return request;

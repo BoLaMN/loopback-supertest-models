@@ -1,11 +1,11 @@
 modelInfo = require './model'
-createCtors = require './ctors'
 
-module.exports = (app, models) ->
+module.exports = (app) ->
+  configs = {}
 
   { adapter } = app.handler 'rest' 
 
-  addModelInfo = (configs, modelName) ->
+  addModelInfo = (modelName) ->
     configs[modelName] ?= {}
     configs[modelName].properties ?= modelInfo app.models[modelName]
     configs[modelName]
@@ -22,10 +22,10 @@ module.exports = (app, models) ->
       
     res
 
-  set = (configs, properties, newProp, action, modelName) ->
+  set = (properties, newProp, action, modelName) ->
     model = configs[modelName]
 
-    { relations, dataSource } = app.models[modelName]
+    { relations } = app.models[modelName]
 
     properties.push newProp
 
@@ -62,7 +62,7 @@ module.exports = (app, models) ->
           model[property].multiple = multiple
           model[property].model = modelTo.modelName
 
-          addModelInfo configs, modelTo.modelName
+          addModelInfo modelTo.modelName
 
           relations = modelTo.relations
 
@@ -79,20 +79,18 @@ module.exports = (app, models) ->
             model: modelTo.modelName
             as: keyFrom 
 
-          addModelInfo configs, modelTo.modelName
+          addModelInfo modelTo.modelName
 
       model = model[property]
 
-    configs
-
-  reducer = (configs, route) ->
+  adapter.allRoutes().forEach (route) ->
     method = adapter.getRestMethodByName route.method
     
     { restClass, accepts, returns
       sharedMethod, name } = method 
 
     modelName = restClass.name
-    model = addModelInfo configs, modelName
+    model = addModelInfo modelName
 
     action =
       url: route.path
@@ -138,8 +136,6 @@ module.exports = (app, models) ->
       model.aliases[alias] = name.replace 'prototype.', ''
 
     if sharedMethod.isStatic
-      #console.log action
-
       model.methods ?= {}
       model.methods[name] = action
     else
@@ -155,8 +151,6 @@ module.exports = (app, models) ->
         source: 'path'
         type: 'any'
 
-      #console.log action
-
       if prop is parts[0]
         configs[modelName].methods ?= {}
         configs[modelName].methods[prop] = action
@@ -164,8 +158,6 @@ module.exports = (app, models) ->
         parts = parts.join '.scopes.'
         str = [ 'scopes' ].concat(parts.split('.')).concat [ 'methods' ]
 
-        set configs, str, prop, action, modelName
+        set str, prop, action, modelName
 
-    configs
-
-  createCtors app, models, adapter.allRoutes().reduce reducer, {}
+  configs

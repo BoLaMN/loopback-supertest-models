@@ -1,6 +1,5 @@
 'use strict';
-var List, proto,
-  slice = [].slice;
+var List, proto;
 
 proto = Array.prototype;
 
@@ -126,22 +125,6 @@ List = (function() {
       };
     })(this));
     return count;
-  };
-
-  List.prototype.toObject = function() {
-    var args;
-    args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
-    return this.map(function(item) {
-      return item.toObject.apply(item, args);
-    });
-  };
-
-  List.prototype.toJSON = function() {
-    return this.toObject(true);
-  };
-
-  List.prototype.toString = function() {
-    return JSON.stringify(this.toJSON());
   };
 
   return List;

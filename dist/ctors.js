@@ -1,4 +1,4 @@
-var List, objectid, request,
+var List, bundle, objectid, request,
   hasProp = {}.hasOwnProperty,
   slice = [].slice;
 
@@ -8,9 +8,13 @@ objectid = require('./objectid');
 
 request = require('./request');
 
-module.exports = function(app, models, configs) {
-  var Model, buildRelationModel, createCtor, createRequest, define;
-  createRequest = request(app, models);
+bundle = require('./bundle');
+
+module.exports = function(app, models) {
+  var Model, apiRoot, configs, createCtor, createRequest, define;
+  configs = bundle(app);
+  apiRoot = app.get('restApiRoot');
+  createRequest = request(app, apiRoot, models);
   define = function(cls, prop, desc) {
     return Object.defineProperty(cls, prop, {
       writable: false,
@@ -18,8 +22,14 @@ module.exports = function(app, models, configs) {
       value: desc
     });
   };
-  createCtor = function(name) {
-    var child, ctor, key, value;
+  createCtor = function(name, scope, parent) {
+    var aliases, as, child, ctor, embed, fk, key, methods, multiple, pk, properties, scopes, type, value;
+    if (parent) {
+      methods = scope.methods, type = scope.type, scopes = scope.scopes, embed = scope.embed, fk = scope.fk, pk = scope.pk, as = scope.as, multiple = scope.multiple;
+      properties = models[name].properties;
+    } else {
+      properties = scope.properties, methods = scope.methods, aliases = scope.aliases, scopes = scope.scopes;
+    }
     child = new Function('return function ' + name + '() {\n' + '  return ' + name + '.__super__.constructor.apply(this, arguments);\n' + '};')();
     ctor = function() {
       this.constructor = child;
@@ -32,64 +42,68 @@ module.exports = function(app, models, configs) {
     ctor.prototype = Model.prototype;
     child.prototype = new ctor;
     child.__super__ = Model.prototype;
-    return child;
-  };
-  buildRelationModel = function(parent, scope) {
-    var as, ctor, embed, fk, methods, model, multiple, pk, scopes, type;
-    methods = scope.methods, model = scope.model, type = scope.type, scopes = scope.scopes, embed = scope.embed, fk = scope.fk, pk = scope.pk, as = scope.as, multiple = scope.multiple;
-    ctor = createCtor(model);
     Object.keys(methods || {}).forEach(function(methodName) {
       var method;
       method = methods[methodName];
-      return define(ctor, methodName, function() {
+      return define(child, methodName, function() {
         var args, callback, req;
         args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
         if (typeof args[args.length - 1] === 'function') {
           callback = args.pop();
         }
-        if (parent.id) {
+        if (parent) {
           args.unshift(parent.id);
         }
-        req = createRequest(ctor, method, args);
+        req = createRequest(child, method, args);
         if (callback) {
           return req.end(callback);
         }
         return req;
       });
     });
-    define(ctor, 'properties', models[model].properties);
-    define(ctor, 'scopes', scopes || {});
-    define(ctor, 'relationName', as);
-    define(ctor, 'multiple', multiple);
-    if (!embed && type !== 'belongsTo') {
-      Object.defineProperty(ctor.prototype, fk, {
-        get: function() {
-          return parent[pk];
-        },
-        set: function(v) {
-          return parent[pk] = v;
-        }
-      });
+    Object.keys(aliases || {}).forEach(function(aliasName) {
+      var alias;
+      alias = aliases[aliasName];
+      return define(child, aliasName, child[alias]);
+    });
+    define(child, 'properties', properties);
+    define(child, 'scopes', scopes || {});
+    if (parent) {
+      define(child, 'relationName', as);
+      define(child, 'multiple', multiple);
+      if (!embed && type !== 'belongsTo') {
+        Object.defineProperty(child.prototype, fk, {
+          get: function() {
+            return parent[pk];
+          },
+          set: function(v) {
+            return parent[pk] = v;
+          }
+        });
+      }
+      if (type === 'belongsTo') {
+        Object.defineProperty(child.prototype, pk, {
+          get: function() {
+            return parent[fk];
+          },
+          set: function(v) {
+            return parent[fk] = v;
+          }
+        });
+      }
     }
-    if (type === 'belongsTo') {
-      Object.defineProperty(ctor.prototype, pk, {
-        get: function() {
-          return parent[fk];
-        },
-        set: function(v) {
-          return parent[fk] = v;
-        }
-      });
-    }
-    return ctor;
+    return child;
   };
   Model = (function() {
-    function Model(data) {
+    function Model(data, parent) {
       var as, key, model, multiple, property, propertyName, ref, ref1, scope, type, value;
       for (key in data) {
         if (!hasProp.call(data, key)) continue;
         value = data[key];
         this[key] = value;
+      }
+      if (parent) {
+        define(this, 'parent', parent);
       }
       ref = this.constructor.scopes;
       for (key in ref) {
@@ -99,7 +113,7 @@ module.exports = function(app, models, configs) {
         if (!model) {
           continue;
         }
-        define(this, key, buildRelationModel(this, scope));
+        define(this, key, createCtor(model, scope, this));
         if (!data[as]) {
           continue;
         }
@@ -146,33 +160,7 @@ module.exports = function(app, models, configs) {
 
   })();
   Object.keys(configs).forEach(function(modelName) {
-    var aliases, methods, model, properties, ref, scopes;
-    ref = configs[modelName], properties = ref.properties, methods = ref.methods, aliases = ref.aliases, scopes = ref.scopes;
-    model = createCtor(modelName);
-    define(model, 'properties', properties || {});
-    define(model, 'scopes', scopes || {});
-    Object.keys(methods || {}).forEach(function(methodName) {
-      var method;
-      method = methods[methodName];
-      return define(model, methodName, function() {
-        var args, callback, req;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
-        if (typeof args[args.length - 1] === 'function') {
-          callback = args.pop();
-        }
-        req = createRequest(model, method, args);
-        if (callback) {
-          return req.end(callback);
-        }
-        return req;
-      });
-    });
-    Object.keys(aliases || {}).forEach(function(aliasName) {
-      var alias;
-      alias = aliases[aliasName];
-      return define(model, aliasName, model[alias]);
-    });
-    return models[modelName] = model;
+    return models[modelName] = createCtor(modelName, configs[modelName]);
   });
   return models;
 };
