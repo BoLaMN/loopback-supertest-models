@@ -134,7 +134,7 @@ module.exports = function(app, models) {
       return obj;
     };
 
-    Model.prototype.toJSON = Model.toObject;
+    Model.prototype.toJSON = Model.prototype.toObject;
 
     Model.prototype.toString = function() {
       return JSON.stringify(this.toJSON());

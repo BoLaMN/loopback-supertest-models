@@ -117,7 +117,7 @@ module.exports = (app, models) ->
 
       obj
     
-    toJSON: @toObject
+    toJSON: @::toObject
 
     toString: ->
       JSON.stringify @toJSON()
