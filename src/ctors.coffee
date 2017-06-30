@@ -17,7 +17,7 @@ module.exports = (app, models) ->
       value: desc
 
   createCtor = (name, scope, parent) ->
-    { properties, methods, aliases, scopes 
+    { properties, methods, proto, aliases, scopes 
       type, fk, pk, as } = scope
 
     properties ?= models[name].properties
@@ -40,15 +40,15 @@ module.exports = (app, models) ->
     child.prototype = new ctor
     child.__super__ = Model.prototype
 
-    Object.keys(methods or {}).forEach (methodName) ->
-      method = methods[methodName]
-      
-      define child, methodName, (args...) ->
+    add = (cls, name, method) ->
+      define cls, name, (args...) ->
         if typeof args[args.length - 1] is 'function'
           callback = args.pop()
         
         if parent
           args.unshift parent.id
+        else if @id 
+          args.unshift @id
 
         req = createRequest child, method, args
         
@@ -57,9 +57,21 @@ module.exports = (app, models) ->
 
         req 
 
+    Object.keys(methods or {}).forEach (methodName) ->
+      add child, methodName, methods[methodName]
+
+    Object.keys(proto or {}).forEach (methodName) ->
+      add child.prototype, methodName, proto[methodName]
+
     Object.keys(aliases or {}).forEach (aliasName) ->
       alias = aliases[aliasName]
       define child, aliasName, child[alias]
+
+    if as 
+      define child, 'as', as
+
+    if type 
+      define child, 'type', type
 
     define child, 'properties', properties
     define child, 'scopes', scopes or {}
@@ -90,7 +102,7 @@ module.exports = (app, models) ->
 
       for own name, property of @constructor.properties
         if property.type?.toLowerCase() is 'objectid'
-          @[name] = objectid()
+          @[name] = objectid @[name]
 
         if @[name] is undefined and property.default
           @[name] = property.default

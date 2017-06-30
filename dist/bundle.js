@@ -172,10 +172,10 @@ module.exports = function(app) {
         type: 'any'
       });
       if (prop === parts[0]) {
-        if ((base = configs[modelName]).methods == null) {
-          base.methods = {};
+        if ((base = configs[modelName]).proto == null) {
+          base.proto = {};
         }
-        return configs[modelName].methods[prop] = action;
+        return configs[modelName].proto[prop] = action;
       } else {
         parts = parts.join('.scopes.');
         str = ['scopes'].concat(parts.split('.')).concat(['methods']);

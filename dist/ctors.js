@@ -23,8 +23,8 @@ module.exports = function(app, models) {
     });
   };
   createCtor = function(name, scope, parent) {
-    var aliases, as, child, ctor, fk, key, methods, pk, properties, scopes, type, value;
-    properties = scope.properties, methods = scope.methods, aliases = scope.aliases, scopes = scope.scopes, type = scope.type, fk = scope.fk, pk = scope.pk, as = scope.as;
+    var add, aliases, as, child, ctor, fk, key, methods, pk, properties, proto, scopes, type, value;
+    properties = scope.properties, methods = scope.methods, proto = scope.proto, aliases = scope.aliases, scopes = scope.scopes, type = scope.type, fk = scope.fk, pk = scope.pk, as = scope.as;
     if (properties == null) {
       properties = models[name].properties;
     }
@@ -40,10 +40,8 @@ module.exports = function(app, models) {
     ctor.prototype = Model.prototype;
     child.prototype = new ctor;
     child.__super__ = Model.prototype;
-    Object.keys(methods || {}).forEach(function(methodName) {
-      var method;
-      method = methods[methodName];
-      return define(child, methodName, function() {
+    add = function(cls, name, method) {
+      return define(cls, name, function() {
         var args, callback, req;
         args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
         if (typeof args[args.length - 1] === 'function') {
@@ -51,6 +49,8 @@ module.exports = function(app, models) {
         }
         if (parent) {
           args.unshift(parent.id);
+        } else if (this.id) {
+          args.unshift(this.id);
         }
         req = createRequest(child, method, args);
         if (callback) {
@@ -58,12 +58,24 @@ module.exports = function(app, models) {
         }
         return req;
       });
+    };
+    Object.keys(methods || {}).forEach(function(methodName) {
+      return add(child, methodName, methods[methodName]);
+    });
+    Object.keys(proto || {}).forEach(function(methodName) {
+      return add(child.prototype, methodName, proto[methodName]);
     });
     Object.keys(aliases || {}).forEach(function(aliasName) {
       var alias;
       alias = aliases[aliasName];
       return define(child, aliasName, child[alias]);
     });
+    if (as) {
+      define(child, 'as', as);
+    }
+    if (type) {
+      define(child, 'type', type);
+    }
     define(child, 'properties', properties);
     define(child, 'scopes', scopes || {});
     return child;
@@ -99,7 +111,7 @@ module.exports = function(app, models) {
         if (!hasProp.call(ref1, name)) continue;
         property = ref1[name];
         if (((ref2 = property.type) != null ? ref2.toLowerCase() : void 0) === 'objectid') {
-          this[name] = objectid();
+          this[name] = objectid(this[name]);
         }
         if (this[name] === void 0 && property["default"]) {
           this[name] = property["default"];

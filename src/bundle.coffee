@@ -150,8 +150,8 @@ module.exports = (app) ->
         type: 'any'
 
       if prop is parts[0]
-        configs[modelName].methods ?= {}
-        configs[modelName].methods[prop] = action
+        configs[modelName].proto ?= {}
+        configs[modelName].proto[prop] = action
       else
         parts = parts.join '.scopes.'
         str = [ 'scopes' ].concat(parts.split('.')).concat [ 'methods' ]
