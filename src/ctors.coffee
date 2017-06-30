@@ -107,7 +107,7 @@ module.exports = (app, models) ->
         if @[name] is undefined and property.default
           @[name] = property.default
 
-    toJSON: ->
+    toObject: ->
       obj = {} 
 
       for own key, val of @
@@ -117,6 +117,11 @@ module.exports = (app, models) ->
 
       obj
     
+    toJSON: @toObject
+
+    toString: ->
+      JSON.stringify @toJSON()
+
   Object.keys(configs).forEach (modelName) ->
     models[modelName] = createCtor modelName, configs[modelName]
 

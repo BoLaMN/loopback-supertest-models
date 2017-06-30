@@ -1,7 +1,8 @@
 'use strict';
 var List, proto,
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-  hasProp = {}.hasOwnProperty;
+  hasProp = {}.hasOwnProperty,
+  slice = [].slice;
 
 proto = Array.prototype;
 
@@ -86,9 +87,8 @@ List = (function(superClass) {
   };
 
   List.prototype.splice = function(index, count, elements) {
-    var added, args;
+    var args;
     args = [index, count];
-    added = [];
     if (elements) {
       if (!Array.isArray(elements)) {
         elements = [elements];
@@ -108,6 +108,22 @@ List = (function(superClass) {
       };
     })(this));
     return args.length;
+  };
+
+  List.prototype.toObject = function() {
+    var args;
+    args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+    return this.map(function(item) {
+      return item.toObject.apply(item, args);
+    });
+  };
+
+  List.prototype.toJSON = function() {
+    return this.toObject(true);
+  };
+
+  List.prototype.toString = function() {
+    return JSON.stringify(this.toJSON());
   };
 
   return List;

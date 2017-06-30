@@ -66,7 +66,6 @@ class List extends Array
 
   splice: (index, count, elements) ->
     args = [ index, count ]
-    added = []
 
     if elements
       if not Array.isArray elements
@@ -85,4 +84,15 @@ class List extends Array
 
     args.length
 
+  toObject: (args...) ->
+    
+    @map (item) ->
+      item.toObject args...
+
+  toJSON: ->
+    @toObject true
+
+  toString: ->
+    JSON.stringify @toJSON()
+    
 module.exports = List

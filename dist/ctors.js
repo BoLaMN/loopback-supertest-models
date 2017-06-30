@@ -119,7 +119,7 @@ module.exports = function(app, models) {
       }
     }
 
-    Model.prototype.toJSON = function() {
+    Model.prototype.toObject = function() {
       var key, obj, ref, val;
       obj = {};
       ref = this;
@@ -132,6 +132,12 @@ module.exports = function(app, models) {
         obj[key] = val;
       }
       return obj;
+    };
+
+    Model.prototype.toJSON = Model.toObject;
+
+    Model.prototype.toString = function() {
+      return JSON.stringify(this.toJSON());
     };
 
     return Model;
