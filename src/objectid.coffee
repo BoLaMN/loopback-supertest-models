@@ -1,9 +1,9 @@
-id = parseInt(Math.random() * 0xFFFFFF, 10)
-index = parseInt(Math.random() * 0xFFFFFF, 10)
-pid = Math.floor(Math.random() * 100000) % 0xFFFF
-
 module.exports = (val) ->
   return val if val 
+
+  id = parseInt(Math.random() * 0xFFFFFF, 10)
+  index = parseInt(Math.random() * 0xFFFFFF, 10)
+  pid = Math.floor(Math.random() * 100000) % 0xFFFF
   
   next = ->
     index = (index + 1) % 0xFFFFFF

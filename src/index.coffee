@@ -1,4 +1,6 @@
 async    = require 'async'
+fs         = require 'fs'
+path       = require 'path'
 
 bundle   = require './bundle'
 ctors    = require './ctors'
@@ -42,8 +44,13 @@ module.exports = (app) ->
     model._runWhenAttachedToApp next
   , -> 
       configs = bundle app
+      configJSON = JSON.stringify configs, null, '\t'
+
       apiRoot = app.get 'restApiRoot'
       
-      ctors configs, request(app), apiRoot, models
+      fs.writeFileSync path.join(__dirname, 'configs.json'), configJSON, 'utf-8'
+
+      ctors configs, request(app), apiRoot, (name, model) ->
+        models[name] = model
 
   models

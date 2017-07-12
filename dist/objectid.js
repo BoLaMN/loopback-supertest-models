@@ -1,16 +1,11 @@
-var id, index, pid;
-
-id = parseInt(Math.random() * 0xFFFFFF, 10);
-
-index = parseInt(Math.random() * 0xFFFFFF, 10);
-
-pid = Math.floor(Math.random() * 100000) % 0xFFFF;
-
 module.exports = function(val) {
-  var buffer, generate, hex, next;
+  var buffer, generate, hex, id, index, next, pid;
   if (val) {
     return val;
   }
+  id = parseInt(Math.random() * 0xFFFFFF, 10);
+  index = parseInt(Math.random() * 0xFFFFFF, 10);
+  pid = Math.floor(Math.random() * 100000) % 0xFFFF;
   next = function() {
     return index = (index + 1) % 0xFFFFFF;
   };

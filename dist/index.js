@@ -1,6 +1,10 @@
-var async, bundle, ctors, debug, request;
+var async, bundle, ctors, debug, fs, path, request;
 
 async = require('async');
+
+fs = require('fs');
+
+path = require('path');
 
 bundle = require('./bundle');
 
@@ -36,10 +40,14 @@ module.exports = function(app) {
   async.forEachOf(app.models, function(model, modelName, next) {
     return model._runWhenAttachedToApp(next);
   }, function() {
-    var apiRoot, configs;
+    var apiRoot, configJSON, configs;
     configs = bundle(app);
+    configJSON = JSON.stringify(configs, null, '\t');
     apiRoot = app.get('restApiRoot');
-    return ctors(configs, request(app), apiRoot, models);
+    fs.writeFileSync(path.join(__dirname, 'configs.json'), configJSON, 'utf-8');
+    return ctors(configs, request(app), apiRoot, function(name, model) {
+      return models[name] = model;
+    });
   });
   return models;
 };

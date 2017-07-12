@@ -1,29 +1,25 @@
-var acceptable, serialize;
-
-acceptable = function(val, type) {
-  var array;
-  array = Array.isArray(type) || type.toLowerCase() === 'array' || type === 'any';
-  if (array) {
-    return true;
-  }
-  if (['boolean', 'string', 'object', 'number'].indexOf(type) === -1) {
-    return typeof val === 'object';
-  }
-  return typeof val === type;
-};
-
-serialize = function(val, type) {
-  if ((type === 'object' || type === 'string') && typeof val === 'object') {
-    return JSON.stringify(val);
-  } else {
-    return val;
-  }
-};
-
 module.exports = function(restApiRoot, arg, args) {
-  var accepts, body, headers, i, len, method, name, query, ref, returns, source, type, url, val;
+  var acceptable, accepts, body, headers, i, len, method, name, query, ref, returns, serialize, source, type, url, val;
   accepts = arg.accepts, url = arg.url, returns = arg.returns, method = arg.method;
   query = body = headers = void 0;
+  acceptable = function(val, type) {
+    var array;
+    array = Array.isArray(type) || type.toLowerCase() === 'array' || type === 'any';
+    if (array) {
+      return true;
+    }
+    if (['boolean', 'string', 'object', 'number'].indexOf(type) === -1) {
+      return typeof val === 'object';
+    }
+    return typeof val === type;
+  };
+  serialize = function(val, type) {
+    if ((type === 'object' || type === 'string') && typeof val === 'object') {
+      return JSON.stringify(val);
+    } else {
+      return val;
+    }
+  };
   for (i = 0, len = accepts.length; i < len; i++) {
     ref = accepts[i], name = ref.name, source = ref.source, type = ref.type;
     val = args.shift();

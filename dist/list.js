@@ -1,10 +1,8 @@
 'use strict';
-var List, proto,
+var List,
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty,
   slice = [].slice;
-
-proto = Array.prototype;
 
 List = (function(superClass) {
   extend(List, superClass);
@@ -53,15 +51,15 @@ List = (function(superClass) {
   };
 
   List.prototype.concat = function() {
-    return this["new"](proto.concat.apply(this, arguments));
+    return this["new"](Array.prototype.concat.apply(this, arguments));
   };
 
   List.prototype.map = function() {
-    return this["new"](proto.map.apply(this, arguments));
+    return this["new"](Array.prototype.map.apply(this, arguments));
   };
 
   List.prototype.filter = function() {
-    return this["new"](proto.filter.apply(this, arguments));
+    return this["new"](Array.prototype.filter.apply(this, arguments));
   };
 
   List.prototype.build = function(data) {
@@ -81,7 +79,7 @@ List = (function(superClass) {
     }
     args.forEach((function(_this) {
       return function(arg) {
-        return proto.push.apply(_this, [_this.build(arg)]);
+        return Array.prototype.push.apply(_this, [_this.build(arg)]);
       };
     })(this));
     return args.length;
@@ -96,7 +94,7 @@ List = (function(superClass) {
       }
       args[3] - elements.map(this.build.bind(this));
     }
-    return proto.splice.apply(this, args);
+    return Array.prototype.splice.apply(this, args);
   };
 
   List.prototype.unshift = function(args) {
@@ -105,7 +103,7 @@ List = (function(superClass) {
     }
     args.forEach((function(_this) {
       return function(arg) {
-        return proto.unshift.apply(_this, [_this.build(arg)]);
+        return Array.prototype.unshift.apply(_this, [_this.build(arg)]);
       };
     })(this));
     return args.length;

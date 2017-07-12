@@ -19,6 +19,16 @@ module.exports = (app) ->
       request.set 'Authorization', 'Bearer ' + token 
       request
 
-    request.parse parser model, returns 
+    parse = (res, fn) ->
+      res.text = ''
+      res.setEncoding 'utf8'
+      
+      res.on 'data', (chunk) ->
+        res.text += chunk
+
+      res.on 'end', ->
+        fn null, parser model, returns, res.text, res.statusCode
+
+    request.parse parse
 
     request

@@ -6,7 +6,7 @@ supertest = require('supertest');
 
 module.exports = function(app) {
   return function(model, arg) {
-    var body, headers, method, query, request, returns, url;
+    var body, headers, method, parse, query, request, returns, url;
     method = arg.method, returns = arg.returns, query = arg.query, body = arg.body, headers = arg.headers, url = arg.url;
     request = supertest(app)[method](url);
     request.type('json');
@@ -23,7 +23,17 @@ module.exports = function(app) {
       request.set('Authorization', 'Bearer ' + token);
       return request;
     };
-    request.parse(parser(model, returns));
+    parse = function(res, fn) {
+      res.text = '';
+      res.setEncoding('utf8');
+      res.on('data', function(chunk) {
+        return res.text += chunk;
+      });
+      return res.on('end', function() {
+        return fn(null, parser(model, returns, res.text, res.statusCode));
+      });
+    };
+    request.parse(parse);
     return request;
   };
 };

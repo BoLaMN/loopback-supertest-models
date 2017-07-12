@@ -1,7 +1,5 @@
 'use strict'
 
-proto = Array.prototype
-
 class List extends Array
   constructor: (data, type, parent, options) ->
     collection = []
@@ -43,13 +41,13 @@ class List extends Array
     new @constructor arr, @type, @parent
 
   concat: ->
-    @new proto.concat.apply @, arguments
+    @new Array::concat.apply @, arguments
 
   map: ->
-    @new proto.map.apply @, arguments
+    @new Array::map.apply @, arguments
 
   filter: ->
-    @new proto.filter.apply @, arguments
+    @new Array::filter.apply @, arguments
 
   build: (data = {}) ->
     if data instanceof @type 
@@ -61,7 +59,7 @@ class List extends Array
       args = [ args ]
 
     args.forEach (arg) =>
-      proto.push.apply @, [ @build(arg) ]
+      Array::push.apply @, [ @build(arg) ]
 
     args.length
 
@@ -74,14 +72,14 @@ class List extends Array
 
       args[3] - elements.map @build.bind(@)
 
-    proto.splice.apply @, args
+    Array::splice.apply @, args
 
   unshift: (args) ->
     if not Array.isArray args
       args = [ args ]
 
     args.forEach (arg) =>
-      proto.unshift.apply @, [ @build(arg) ]
+      Array::unshift.apply @, [ @build(arg) ]
 
     args.length
 
