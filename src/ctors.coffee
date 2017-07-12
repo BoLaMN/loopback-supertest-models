@@ -1,17 +1,11 @@
 List = require './list'
 
 objectid = require './objectid'
-request  = require './request'
-bundle   = require './bundle'
-debug    = require('debug') 'loopback:testing:ctors'
+params = require './params'
 
 { EventEmitter } = require 'events'
 
-module.exports = (app, models) ->
-  configs = bundle app
-  apiRoot = app.get 'restApiRoot'
-
-  createRequest = request app, apiRoot, models 
+module.exports = (configs, request, restApiRoot, models) ->
 
   define = (cls, prop, desc) ->
     Object.defineProperty cls, prop,
@@ -59,7 +53,8 @@ module.exports = (app, models) ->
         else if @id 
           args.unshift @id
 
-        req = createRequest child, method, args
+        named = params restApiRoot, method, args
+        req = request child, named
         
         if callback  
           return req.end callback
@@ -84,6 +79,7 @@ module.exports = (app, models) ->
 
     define child, 'properties', properties
     define child, 'scopes', scopes or {}
+    define child, 'models', models
 
     child
 
@@ -141,32 +137,5 @@ module.exports = (app, models) ->
 
   Object.keys(configs).forEach (modelName) ->
     models[modelName] = createCtor modelName, configs[modelName]
-
-  app.remotes().before '**', (ctx, instance, next) ->
-    if typeof instance is 'function'
-      next = instance
-
-    regExp = /^__([^_]+)__([^_]+)$/
-
-    { name, sharedClass } = ctx.method
-    
-    modelName = sharedClass.name
-
-    model = models[modelName]
-    matches = name.match regExp 
-
-    if matches?.length > 1
-      [ input, name, relation ] = matches
-
-      scope = model.scopes[relation]
-      model = models[scope.model]
-
-    debug model.name, name, ctx.args 
-
-    model.emit name, ctx.args
-
-    next()
-
-    return
     
   models

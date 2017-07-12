@@ -2,7 +2,7 @@ var List;
 
 List = require('./list');
 
-module.exports = function(models, model, returns) {
+module.exports = function(model, returns) {
   return function(res, fn) {
     res.text = '';
     res.setEncoding('utf8');
@@ -10,7 +10,7 @@ module.exports = function(models, model, returns) {
       return res.text += chunk;
     });
     res.on('end', function() {
-      var body, ctor, err, i, key, len, name, opts, ref, root, type;
+      var body, ctor, err, i, key, len, models, name, opts, ref, root, type;
       body = res.text && JSON.parse(res.text);
       if (res.statusCode >= 400) {
         if (typeof body === 'object' && body.error) {
@@ -33,6 +33,7 @@ module.exports = function(models, model, returns) {
         if (model.name === type) {
           ctor = model;
         }
+        models = model.models;
         if (ctor == null) {
           ctor = models[name] || models[type] || model;
         }

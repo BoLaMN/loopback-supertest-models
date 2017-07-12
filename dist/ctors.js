@@ -1,4 +1,4 @@
-var EventEmitter, List, bundle, debug, objectid, request,
+var EventEmitter, List, objectid, params,
   hasProp = {}.hasOwnProperty,
   slice = [].slice;
 
@@ -6,19 +6,12 @@ List = require('./list');
 
 objectid = require('./objectid');
 
-request = require('./request');
-
-bundle = require('./bundle');
-
-debug = require('debug')('loopback:testing:ctors');
+params = require('./params');
 
 EventEmitter = require('events').EventEmitter;
 
-module.exports = function(app, models) {
-  var Model, apiRoot, configs, createCtor, createRequest, define;
-  configs = bundle(app);
-  apiRoot = app.get('restApiRoot');
-  createRequest = request(app, apiRoot, models);
+module.exports = function(configs, request, restApiRoot, models) {
+  var Model, createCtor, define;
   define = function(cls, prop, desc) {
     return Object.defineProperty(cls, prop, {
       writable: false,
@@ -54,7 +47,7 @@ module.exports = function(app, models) {
     child.__super__ = Model.prototype;
     add = function(cls, name, method) {
       return define(cls, name, function() {
-        var args, callback, req;
+        var args, callback, named, req;
         args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
         if (typeof args[args.length - 1] === 'function') {
           callback = args.pop();
@@ -64,7 +57,8 @@ module.exports = function(app, models) {
         } else if (this.id) {
           args.unshift(this.id);
         }
-        req = createRequest(child, method, args);
+        named = params(restApiRoot, method, args);
+        req = request(child, named);
         if (callback) {
           return req.end(callback);
         }
@@ -90,6 +84,7 @@ module.exports = function(app, models) {
     }
     define(child, 'properties', properties);
     define(child, 'scopes', scopes || {});
+    define(child, 'models', models);
     return child;
   };
   Model = (function() {
@@ -172,25 +167,6 @@ module.exports = function(app, models) {
   })();
   Object.keys(configs).forEach(function(modelName) {
     return models[modelName] = createCtor(modelName, configs[modelName]);
-  });
-  app.remotes().before('**', function(ctx, instance, next) {
-    var input, matches, model, modelName, name, ref, regExp, relation, scope, sharedClass;
-    if (typeof instance === 'function') {
-      next = instance;
-    }
-    regExp = /^__([^_]+)__([^_]+)$/;
-    ref = ctx.method, name = ref.name, sharedClass = ref.sharedClass;
-    modelName = sharedClass.name;
-    model = models[modelName];
-    matches = name.match(regExp);
-    if ((matches != null ? matches.length : void 0) > 1) {
-      input = matches[0], name = matches[1], relation = matches[2];
-      scope = model.scopes[relation];
-      model = models[scope.model];
-    }
-    debug(model.name, name, ctx.args);
-    model.emit(name, ctx.args);
-    next();
   });
   return models;
 };

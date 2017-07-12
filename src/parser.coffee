@@ -1,6 +1,6 @@
 List = require './list'
 
-module.exports = (models, model, returns) ->
+module.exports = (model, returns) ->
 
   (res, fn) ->
     res.text = ''
@@ -35,6 +35,8 @@ module.exports = (models, model, returns) ->
         if model.name is type 
           ctor = model 
 
+        { models } = model 
+        
         ctor ?= models[name] or 
                 models[type] or
                 model 
