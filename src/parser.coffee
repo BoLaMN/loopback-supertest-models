@@ -39,11 +39,13 @@ module.exports = (models, model, returns) ->
                 models[type] or
                 model 
 
+        opts = defaults: false
+
         if ctor 
           if Array.isArray body 
-            body = new List body, ctor
+            body = new List body, ctor, null, opts
           else 
-            body = new ctor body
+            body = new ctor body, opts
    
       fn null, body
 

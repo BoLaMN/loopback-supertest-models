@@ -9,7 +9,7 @@ proto = Array.prototype;
 List = (function(superClass) {
   extend(List, superClass);
 
-  function List(data, type, parent) {
+  function List(data, type, parent, options) {
     var collection, define, e, err, ref;
     collection = [];
     if (!type) {
@@ -31,6 +31,7 @@ List = (function(superClass) {
     collection.__proto__ = this;
     define('parent', parent);
     define('type', type);
+    define('options', options);
     if (typeof data === 'string' && /^\[.+\]$|^\{.+\}$/.test(data)) {
       try {
         data = JSON.parse(data);
@@ -70,7 +71,7 @@ List = (function(superClass) {
     if (data instanceof this.type) {
       return data;
     } else {
-      return new this.type(data);
+      return new this.type(data, this.options);
     }
   };
 

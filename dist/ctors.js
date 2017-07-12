@@ -1,4 +1,4 @@
-var List, bundle, objectid, request,
+var EventEmitter, List, bundle, debug, objectid, request,
   hasProp = {}.hasOwnProperty,
   slice = [].slice;
 
@@ -9,6 +9,10 @@ objectid = require('./objectid');
 request = require('./request');
 
 bundle = require('./bundle');
+
+debug = require('debug')('loopback:testing:ctors');
+
+EventEmitter = require('events').EventEmitter;
 
 module.exports = function(app, models) {
   var Model, apiRoot, configs, createCtor, createRequest, define;
@@ -23,7 +27,7 @@ module.exports = function(app, models) {
     });
   };
   createCtor = function(name, scope, parent) {
-    var add, aliases, as, child, ctor, fk, key, methods, pk, properties, proto, scopes, type, value;
+    var add, aliases, as, child, ctor, events, f, fk, fn, key, methods, pk, properties, proto, ref, scopes, type, value;
     properties = scope.properties, methods = scope.methods, proto = scope.proto, aliases = scope.aliases, scopes = scope.scopes, type = scope.type, fk = scope.fk, pk = scope.pk, as = scope.as;
     if (properties == null) {
       properties = models[name].properties;
@@ -38,6 +42,14 @@ module.exports = function(app, models) {
       child[key] = value;
     }
     ctor.prototype = Model.prototype;
+    events = models[name] || new EventEmitter;
+    ref = EventEmitter.prototype;
+    for (f in ref) {
+      fn = ref[f];
+      if (typeof fn === 'function') {
+        define(child, f, events[f].bind(events));
+      }
+    }
     child.prototype = new ctor;
     child.__super__ = Model.prototype;
     add = function(cls, name, method) {
@@ -81,8 +93,11 @@ module.exports = function(app, models) {
     return child;
   };
   Model = (function() {
-    function Model(data) {
+    function Model(data, options) {
       var as, key, model, name, property, ref, ref1, ref2, scope, value;
+      if (options == null) {
+        options = {};
+      }
       for (key in data) {
         if (!hasProp.call(data, key)) continue;
         value = data[key];
@@ -119,6 +134,18 @@ module.exports = function(app, models) {
       }
     }
 
+    Model.prototype.on = function() {
+      var ref;
+      (ref = this.constructor).on.apply(ref, arguments);
+      return this;
+    };
+
+    Model.prototype.once = function() {
+      var ref;
+      (ref = this.constructor).once.apply(ref, arguments);
+      return this;
+    };
+
     Model.prototype.toObject = function() {
       var key, obj, ref, val;
       obj = {};
@@ -145,6 +172,25 @@ module.exports = function(app, models) {
   })();
   Object.keys(configs).forEach(function(modelName) {
     return models[modelName] = createCtor(modelName, configs[modelName]);
+  });
+  app.remotes().before('**', function(ctx, instance, next) {
+    var input, matches, model, modelName, name, ref, regExp, relation, scope, sharedClass;
+    if (typeof instance === 'function') {
+      next = instance;
+    }
+    regExp = /^__([^_]+)__([^_]+)$/;
+    ref = ctx.method, name = ref.name, sharedClass = ref.sharedClass;
+    modelName = sharedClass.name;
+    model = models[modelName];
+    matches = name.match(regExp);
+    if ((matches != null ? matches.length : void 0) > 1) {
+      input = matches[0], name = matches[1], relation = matches[2];
+      scope = model.scopes[relation];
+      model = models[scope.model];
+    }
+    debug(model.name, name, ctx.args);
+    model.emit(name, ctx.args);
+    next();
   });
   return models;
 };

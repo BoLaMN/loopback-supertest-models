@@ -10,7 +10,7 @@ module.exports = function(models, model, returns) {
       return res.text += chunk;
     });
     res.on('end', function() {
-      var body, ctor, err, i, key, len, name, ref, root, type;
+      var body, ctor, err, i, key, len, name, opts, ref, root, type;
       body = res.text && JSON.parse(res.text);
       if (res.statusCode >= 400) {
         if (typeof body === 'object' && body.error) {
@@ -36,11 +36,14 @@ module.exports = function(models, model, returns) {
         if (ctor == null) {
           ctor = models[name] || models[type] || model;
         }
+        opts = {
+          defaults: false
+        };
         if (ctor) {
           if (Array.isArray(body)) {
-            body = new List(body, ctor);
+            body = new List(body, ctor, null, opts);
           } else {
-            body = new ctor(body);
+            body = new ctor(body, opts);
           }
         }
       }

@@ -3,6 +3,9 @@ List = require './list'
 objectid = require './objectid'
 request  = require './request'
 bundle   = require './bundle'
+debug    = require('debug') 'loopback:testing:ctors'
+
+{ EventEmitter } = require 'events'
 
 module.exports = (app, models) ->
   configs = bundle app
@@ -19,7 +22,7 @@ module.exports = (app, models) ->
   createCtor = (name, scope, parent) ->
     { properties, methods, proto, aliases, scopes 
       type, fk, pk, as } = scope
-
+ 
     properties ?= models[name].properties
 
     child = new Function(
@@ -36,6 +39,12 @@ module.exports = (app, models) ->
       child[key] = value
     
     ctor.prototype = Model.prototype
+
+    events = models[name] or new EventEmitter
+
+    for f, fn of EventEmitter.prototype
+      if typeof fn is 'function'
+        define child, f, events[f].bind events
 
     child.prototype = new ctor
     child.__super__ = Model.prototype
@@ -79,7 +88,7 @@ module.exports = (app, models) ->
     child
 
   class Model
-    constructor: (data) ->
+    constructor: (data, options = {}) ->
 
       for own key, value of data
         @[key] = value 
@@ -107,6 +116,14 @@ module.exports = (app, models) ->
         if @[name] is undefined and property.default
           @[name] = property.default
 
+    on: ->
+      @constructor.on arguments...
+      @
+    
+    once: ->
+      @constructor.once arguments...
+      @
+
     toObject: ->
       obj = {} 
 
@@ -125,4 +142,31 @@ module.exports = (app, models) ->
   Object.keys(configs).forEach (modelName) ->
     models[modelName] = createCtor modelName, configs[modelName]
 
+  app.remotes().before '**', (ctx, instance, next) ->
+    if typeof instance is 'function'
+      next = instance
+
+    regExp = /^__([^_]+)__([^_]+)$/
+
+    { name, sharedClass } = ctx.method
+    
+    modelName = sharedClass.name
+
+    model = models[modelName]
+    matches = name.match regExp 
+
+    if matches?.length > 1
+      [ input, name, relation ] = matches
+
+      scope = model.scopes[relation]
+      model = models[scope.model]
+
+    debug model.name, name, ctx.args 
+
+    model.emit name, ctx.args
+
+    next()
+
+    return
+    
   models

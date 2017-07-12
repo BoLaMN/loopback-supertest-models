@@ -3,7 +3,7 @@
 proto = Array.prototype
 
 class List extends Array
-  constructor: (data, type, parent) ->
+  constructor: (data, type, parent, options) ->
     collection = []
 
     if not type
@@ -24,6 +24,7 @@ class List extends Array
 
     define 'parent', parent
     define 'type', type
+    define 'options', options
 
     if typeof data is 'string' and /^\[.+\]$|^\{.+\}$/.test data
       try
@@ -53,7 +54,7 @@ class List extends Array
   build: (data = {}) ->
     if data instanceof @type 
       data 
-    else new @type data
+    else new @type data, @options
 
   push: (args) ->
     if not Array.isArray args
