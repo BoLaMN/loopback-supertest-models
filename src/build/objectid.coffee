@@ -1,4 +1,4 @@
-module.exports = (val) ->
+objectid = (val) ->
   return val if val 
 
   id = parseInt(Math.random() * 0xFFFFFF, 10)
@@ -32,3 +32,5 @@ module.exports = (val) ->
     out
 
   buffer(generate()).map(hex.bind(this, 2)).join ''
+
+module.exports = objectid

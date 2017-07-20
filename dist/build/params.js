@@ -1,4 +1,6 @@
-module.exports = function(restApiRoot, arg, args) {
+var params;
+
+params = function(restApiRoot, arg, args) {
   var acceptable, accepts, body, headers, i, len, method, name, query, ref, returns, serialize, source, type, url, val;
   accepts = arg.accepts, url = arg.url, returns = arg.returns, method = arg.method;
   query = body = headers = void 0;
@@ -63,3 +65,5 @@ module.exports = function(restApiRoot, arg, args) {
     method: method
   };
 };
+
+module.exports = params;

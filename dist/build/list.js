@@ -1,14 +1,15 @@
-'use strict';
-var List,
+var List, define,
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty,
   slice = [].slice;
+
+define = require('./define');
 
 List = (function(superClass) {
   extend(List, superClass);
 
   function List(data, type, parent, options) {
-    var collection, define, e, err, ref;
+    var collection, e, err, ref;
     collection = [];
     if (!type) {
       type = (ref = data[0]) != null ? ref.constructor : void 0;
@@ -16,20 +17,10 @@ List = (function(superClass) {
     if (Array.isArray(type)) {
       type = type[0];
     }
-    define = function(prop, desc) {
-      if (desc == null) {
-        return;
-      }
-      return Object.defineProperty(collection, prop, {
-        writable: false,
-        enumerable: false,
-        value: desc
-      });
-    };
     collection.__proto__ = this;
-    define('parent', parent);
-    define('type', type);
-    define('options', options);
+    define(collection, 'parent', parent);
+    define(collection, 'type', type);
+    define(collection, 'options', options);
     if (typeof data === 'string' && /^\[.+\]$|^\{.+\}$/.test(data)) {
       try {
         data = JSON.parse(data);
@@ -63,14 +54,17 @@ List = (function(superClass) {
   };
 
   List.prototype.build = function(data) {
+    var cls;
     if (data == null) {
       data = {};
     }
     if (data instanceof this.type) {
-      return data;
+      cls = data;
     } else {
-      return new this.type(data, this.options);
+      cls = new this.type(data, this.options);
     }
+    define(cls, '__parent', this.parent);
+    return cls;
   };
 
   List.prototype.push = function(args) {
@@ -113,7 +107,11 @@ List = (function(superClass) {
     var args;
     args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
     return this.map(function(item) {
-      return item.toObject.apply(item, args);
+      if (typeof item.toObject === 'function') {
+        return item.toObject.apply(item, args);
+      } else {
+        return item;
+      }
     });
   };
 

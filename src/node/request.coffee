@@ -1,12 +1,6 @@
-ctors = require './ctors'
-configs = require './configs'
-parser = require './parser'
-
 axios = require 'axios'
 
-models = {}
-
-request = (model, arg) ->
+module.exports = (parser, model, arg) ->
 
   parse = (response) ->
     response.data = parser(model, arg.returns, response.data, response.status)
@@ -19,8 +13,3 @@ request = (model, arg) ->
     data: arg.body
     params: arg.query
     transformResponse: parse
-
-ctors configs, request, apiRoot, (name, model) ->
-  models[name] = model
-
-module.exports = models

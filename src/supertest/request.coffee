@@ -1,8 +1,7 @@
-parser    = require './parser'
 supertest = require 'supertest'
 
 module.exports = (app) ->
-  (model, { method, returns, query, body, headers, url }) ->
+  (parser, model, { method, returns, query, body, headers, url }) ->
     request = supertest(app)[method](url)
     request.type 'json' 
 

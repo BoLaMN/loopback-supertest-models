@@ -2,8 +2,8 @@ async    = require 'async'
 fs         = require 'fs'
 path       = require 'path'
 
-bundle   = require './bundle'
-ctors    = require './ctors'
+bundle  = require '../bundle'
+build    = require '../build'
 request  = require './request'
 
 debug    = require('debug') 'loopback:testing:ctors'
@@ -43,14 +43,9 @@ module.exports = (app) ->
   async.forEachOf app.models, (model, modelName, next) ->
     model._runWhenAttachedToApp next
   , -> 
-      configs = bundle app
-      configJSON = JSON.stringify configs, null, '\t'
-
       apiRoot = app.get 'restApiRoot'
       
-      fs.writeFileSync path.join(__dirname, 'configs.json'), configJSON, 'utf-8'
-
-      ctors configs, request(app), apiRoot, (name, model) ->
+      ctors bundle(app), request(app), apiRoot, (name, model) ->
         models[name] = model
 
   models

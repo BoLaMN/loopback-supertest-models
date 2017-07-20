@@ -1,4 +1,4 @@
-var async, bundle, ctors, debug, fs, path, request;
+var async, build, bundle, debug, fs, path, request;
 
 async = require('async');
 
@@ -6,9 +6,9 @@ fs = require('fs');
 
 path = require('path');
 
-bundle = require('./bundle');
+bundle = require('../bundle');
 
-ctors = require('./ctors');
+build = require('../build');
 
 request = require('./request');
 
@@ -40,12 +40,9 @@ module.exports = function(app) {
   async.forEachOf(app.models, function(model, modelName, next) {
     return model._runWhenAttachedToApp(next);
   }, function() {
-    var apiRoot, configJSON, configs;
-    configs = bundle(app);
-    configJSON = JSON.stringify(configs, null, '\t');
+    var apiRoot;
     apiRoot = app.get('restApiRoot');
-    fs.writeFileSync(path.join(__dirname, 'configs.json'), configJSON, 'utf-8');
-    return ctors(configs, request(app), apiRoot, function(name, model) {
+    return ctors(bundle(app), request(app), apiRoot, function(name, model) {
       return models[name] = model;
     });
   });

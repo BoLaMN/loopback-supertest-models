@@ -1,4 +1,4 @@
-'use strict'
+define = require './define'
 
 class List extends Array
   constructor: (data, type, parent, options) ->
@@ -10,19 +10,11 @@ class List extends Array
     if Array.isArray type
       type = type[0]
 
-    define = (prop, desc) ->
-      return unless desc?
-
-      Object.defineProperty collection, prop,
-        writable: false
-        enumerable: false
-        value: desc
-
     collection.__proto__ = @ 
 
-    define 'parent', parent
-    define 'type', type
-    define 'options', options
+    define collection, 'parent', parent
+    define collection, 'type', type
+    define collection, 'options', options
 
     if typeof data is 'string' and /^\[.+\]$|^\{.+\}$/.test data
       try
@@ -51,8 +43,13 @@ class List extends Array
 
   build: (data = {}) ->
     if data instanceof @type 
-      data 
-    else new @type data, @options
+      cls = data 
+    else 
+      cls = new @type data, @options
+
+    define cls, '__parent', @parent
+
+    cls 
 
   push: (args) ->
     if not Array.isArray args
@@ -86,8 +83,10 @@ class List extends Array
   toObject: (args...) ->
     
     @map (item) ->
-      item.toObject args...
-
+      if typeof item.toObject is 'function'
+        item.toObject args...
+      else item 
+      
   toJSON: ->
     @toObject true
 

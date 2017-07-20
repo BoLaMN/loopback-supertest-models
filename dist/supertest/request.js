@@ -1,11 +1,9 @@
-var parser, supertest;
-
-parser = require('./parser');
+var supertest;
 
 supertest = require('supertest');
 
 module.exports = function(app) {
-  return function(model, arg) {
+  return function(parser, model, arg) {
     var body, headers, method, parse, query, request, returns, url;
     method = arg.method, returns = arg.returns, query = arg.query, body = arg.body, headers = arg.headers, url = arg.url;
     request = supertest(app)[method](url);

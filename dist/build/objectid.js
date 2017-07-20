@@ -1,4 +1,6 @@
-module.exports = function(val) {
+var objectid;
+
+objectid = function(val) {
   var buffer, generate, hex, id, index, next, pid;
   if (val) {
     return val;
@@ -34,3 +36,5 @@ module.exports = function(val) {
   };
   return buffer(generate()).map(hex.bind(this, 2)).join('');
 };
+
+module.exports = objectid;

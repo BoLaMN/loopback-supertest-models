@@ -1,4 +1,4 @@
-module.exports = (restApiRoot, { accepts, url, returns, method }, args) ->
+params = (restApiRoot, { accepts, url, returns, method }, args) ->
   query = body = headers = undefined 
 
   acceptable = (val, type) ->
@@ -43,3 +43,5 @@ module.exports = (restApiRoot, { accepts, url, returns, method }, args) ->
   url = restApiRoot + url 
   
   { query, body, headers, url, returns, method }
+
+module.exports = params

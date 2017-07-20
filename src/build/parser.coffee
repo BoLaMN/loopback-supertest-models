@@ -1,6 +1,6 @@
 List = require './list'
 
-module.exports = (model, returns, body, statusCode) ->
+parser = (model, returns, body, statusCode) ->
   body = body and JSON.parse body
 
   if statusCode >= 400
@@ -40,3 +40,5 @@ module.exports = (model, returns, body, statusCode) ->
         body = new ctor body, opts
 
   body
+
+module.exports = parser

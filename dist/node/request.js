@@ -1,16 +1,8 @@
-var axios, configs, ctors, models, parser, request;
-
-ctors = require('./ctors');
-
-configs = require('./configs');
-
-parser = require('./parser');
+var axios;
 
 axios = require('axios');
 
-models = {};
-
-request = function(model, arg) {
+module.exports = function(parser, model, arg) {
   var parse;
   parse = function(response) {
     response.data = parser(model, arg.returns, response.data, response.status);
@@ -25,9 +17,3 @@ request = function(model, arg) {
     transformResponse: parse
   });
 };
-
-ctors(configs, request, apiRoot, function(name, model) {
-  return models[name] = model;
-});
-
-module.exports = models;

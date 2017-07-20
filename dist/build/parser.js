@@ -1,8 +1,8 @@
-var List;
+var List, parser;
 
 List = require('./list');
 
-module.exports = function(model, returns, body, statusCode) {
+parser = function(model, returns, body, statusCode) {
   var ctor, err, i, key, len, models, name, opts, ref, root, type;
   body = body && JSON.parse(body);
   if (statusCode >= 400) {
@@ -43,3 +43,5 @@ module.exports = function(model, returns, body, statusCode) {
   }
   return body;
 };
+
+module.exports = parser;
