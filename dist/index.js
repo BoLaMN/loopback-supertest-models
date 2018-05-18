@@ -1,24 +1,26 @@
-var async, bundle, ctors, debug, fs, path, request;
+var async, bundle, ctors, debug, req;
 
 async = require('async');
-
-fs = require('fs');
-
-path = require('path');
 
 bundle = require('./bundle');
 
 ctors = require('./ctors');
 
-request = require('./request');
+req = require('./request');
 
 debug = require('debug')('loopback:testing:ctors');
 
 module.exports = function(app) {
-  var models;
+  var handler, models;
   app.start();
   models = {};
+  app.remotes().after('**', function(ctx, instance, next) {
+    return handler('after', ctx, instance, next);
+  });
   app.remotes().before('**', function(ctx, instance, next) {
+    return handler('before', ctx, instance, next);
+  });
+  handler = function(event, ctx, instance, next) {
     var input, matches, model, modelName, name, ref, regExp, relation, scope, sharedClass;
     if (typeof instance === 'function') {
       next = instance;
@@ -28,26 +30,28 @@ module.exports = function(app) {
     modelName = sharedClass.name;
     model = models[modelName];
     matches = name.match(regExp);
+    if (!(model != null ? model.name : void 0)) {
+      console.error('no model found for ' + modelName);
+      return next();
+    }
     if ((matches != null ? matches.length : void 0) > 1) {
       input = matches[0], name = matches[1], relation = matches[2];
       scope = model.scopes[relation];
-      model = models[scope.model];
+      if (scope != null ? scope.model : void 0) {
+        model = models[scope.model] || model;
+      }
     }
-    debug(model.name, name, ctx.args);
-    model.emit(name, ctx.args);
+    debug(model.name, event + ':' + name, ctx.args);
+    model.emit(event + ':' + name, ctx.args);
     next();
-  });
+  };
   async.forEachOf(app.models, function(model, modelName, next) {
     return model._runWhenAttachedToApp(next);
   }, function() {
-    var apiRoot, configJSON, configs;
+    var apiRoot, configs;
     configs = bundle(app);
-    configJSON = JSON.stringify(configs, null, '\t');
     apiRoot = app.get('restApiRoot');
-    fs.writeFileSync(path.join(__dirname, 'configs.json'), configJSON, 'utf-8');
-    return ctors(configs, request(app), apiRoot, function(name, model) {
-      return models[name] = model;
-    });
+    return ctors(configs, req(app), apiRoot, models);
   });
   return models;
 };

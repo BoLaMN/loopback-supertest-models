@@ -86,8 +86,10 @@ class List extends Array
   toObject: (args...) ->
     
     @map (item) ->
-      item.toObject args...
-
+      if typeof item.toObject is 'function'
+        item.toObject args...
+      else item 
+      
   toJSON: ->
     @toObject true
 

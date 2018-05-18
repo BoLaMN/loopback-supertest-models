@@ -113,7 +113,11 @@ List = (function(superClass) {
     var args;
     args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
     return this.map(function(item) {
-      return item.toObject.apply(item, args);
+      if (typeof item.toObject === 'function') {
+        return item.toObject.apply(item, args);
+      } else {
+        return item;
+      }
     });
   };
 

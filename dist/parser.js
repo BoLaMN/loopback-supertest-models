@@ -3,8 +3,14 @@ var List;
 List = require('./list');
 
 module.exports = function(model, returns, body, statusCode) {
-  var ctor, err, i, key, len, models, name, opts, ref, root, type;
-  body = body && JSON.parse(body);
+  var ctor, e, err, i, key, len, models, name, opts, ref, root, type;
+  try {
+    body = body && JSON.parse(body);
+  } catch (error) {
+    e = error;
+    e.context = body;
+    console.error(e);
+  }
   if (statusCode >= 400) {
     if (typeof body === 'object' && body.error) {
       err = new Error(body.error.message);
@@ -23,8 +29,12 @@ module.exports = function(model, returns, body, statusCode) {
     if (!root) {
       body = body[name];
     }
-    if (model.name === type) {
-      ctor = model;
+    if (type === 'object') {
+      ctor = Object;
+    } else if (model.name === type) {
+      if (ctor == null) {
+        ctor = model;
+      }
     }
     models = model.models;
     if (ctor == null) {
